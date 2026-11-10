@@ -156,3 +156,13 @@ decision: the verdict depends on whether the thing the student disputes (the key
 
 Also rename the branch from master to main and commit.
 ```
+
+---
+
+### 2026-11-10T19:26:36+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+Before pushing: confirm .env is gitignored and has never been committed (check git history too), and that no API key appears anywhere in tracked files, including the prompt logs. Only if all of that is clean, add https://github.com/SaurabhLingam/acadza_assignment.git as origin, commit the D-015 edit, and push main.
+```
