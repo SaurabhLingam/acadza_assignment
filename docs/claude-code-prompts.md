@@ -405,3 +405,24 @@ session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
 <summary>Background command "PYTHONIOENCODING=utf-8 python -u -m engine.run --cap 0.50 &gt; /c/Users/saura/AppData/Local/Temp/claude/ebefd33da09cf696/3fa27d9c-9c89-4801-bd05-2c41bbce6651/scratchpad/run_full2.log 2&gt;&amp;1" completed (exit code 0)</summary>
 </task-notification>
 ```
+
+---
+
+### 2026-11-10T23:53:06+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+
+
+<pasted_content id="5d75">
+decision: auto-apply bar depends on repair risk. Low-risk repairs (spelling, noise, exam_reference, markup_leak, answer_form) auto-apply when their guard passes and at least one code check supports them; the guards already limit the harm structurally. High-stakes repairs (answer_key, stem_data, option_repair, solution_fix, type_mismatch) keep the two-independent-sources rule.
+
+Fix 1 (vague comment with no named answer counts as nothing_specific, so the checks decide; clear R040's UNSURE note) and 2 (replies use corrected option text). Also:
+- prompt-guard alone only blocks auto-apply at score >= 0.9, unless the regex also flags; log everything below. Tell me R009's score.
+- the reply check shouldn't flag "fixed" for already_fixed reports.
+
+Rerun only what's affected (cache the rest), rescore, commit and push. Give me a short summary.
+</pasted_content id="5d75">
+
+```

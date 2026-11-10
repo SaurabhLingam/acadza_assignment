@@ -80,7 +80,10 @@ class Signals:
 
     @property
     def injection(self) -> bool:
-        return self.injection_regex or bool(self.guard and self.guard.get("flag"))
+        """Blocks auto-apply (D-017): the regex flags (alone, or with any guard flag), or the prompt-guard
+        model alone at a score >= GUARD_BLOCK_ALONE. Lower guard flags are logged only."""
+        g = self.guard or {}
+        return self.injection_regex or (g.get("score") or 0) >= config.GUARD_BLOCK_ALONE
 
 
 @dataclass
@@ -246,7 +249,9 @@ def resolve_key(s: Signals) -> tuple[str, tuple | None, list[str], int, int]:
 def disputed_items(s: Signals) -> set[str]:
     cats = set(s.claim_categories)
     items = set()
-    if "answer" in cats or s.claim_letters or s.claim_values:
+    # a vague comment ("wrong") that names no answer disputes nothing specific: the checks decide (D-009)
+    vague_only = s.claim_primary == "vague" and not s.claim_letters and not s.claim_values
+    if ("answer" in cats and not vague_only) or s.claim_letters or s.claim_values:
         if not cats & {"option_missing", "option_identical", "spelling", "app", "display", "type"}:
             items.add("key")
     if "solution" in cats:
@@ -355,11 +360,12 @@ def _decide_verdict(s: Signals) -> Decision:
             if "nothing_specific" in items:
                 found = [f for f in s.findings if f.strength in (DEFINITE, SIGNAL) and f.repair]
                 if found:
+                    # the checks decide the verdict (defect); triage only picks which repair and the edit
                     reps = tuple(sorted({f.repair for f in found}))
-                    return Decision(None, None, "", 0.5, "none", False, kb + [
+                    return Decision("defect", None, "", confidence(agree + 1, against), "code", False, kb + [
                         "key confirmed; comment names nothing specific but checks found: "
-                        + "; ".join(f.check for f in found)], None, agree, against,
-                        needs_triage="verdict", allowed_repairs=reps, key_status=status)
+                        + "; ".join(f"{f.check} ({f.repair})" for f in found)], None, agree + 1, against,
+                        needs_triage="repair", allowed_repairs=reps, key_status=status)
             return Decision("no_error", None, NON_DEFECT_ROUTE, confidence(agree, against), "code", True, kb,
                             tuple(s.key), agree, against, key_status=status)
         if status == UNCLEAR and "solution" not in items:

@@ -10,6 +10,7 @@ is logged per tier. Code decides verdict, route and confidence (D-001, D-016).
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import re
 import time
@@ -118,12 +119,13 @@ class Runner:
             d.notes.append("No content proposed for the blank option")
         # edit, guards, route, confidence
         edit, how, fails = self._edit(d, pq, findings, claim, s)
-        strong = (d.complete and d.against == 0) or (d.decided_by in ("triage", "code+llm") and d.agree >= 1
-                                                     and d.against == 0)
+        strong, bar_why = self._auto_bar(d, s)
         if content_sources_ok is False:
             strong = False
         route, why = route_for(d.verdict, d.repair, self.tax, strong=strong, edit_ok=bool(edit) and not fails,
                                injection=s.injection, contradicted=contradicted)
+        if bar_why:
+            why = [bar_why if w == "evidence does not meet the auto-apply bar" else w for w in why]
         if fails and fails != ["no edit"]:
             why = [("no edit that passes the guards: " + "; ".join(fails)) if w == "no edit that passes the guards"
                    else w for w in why]
@@ -148,7 +150,8 @@ class Runner:
                            "repair": dt.repair, "route": rt, "agrees_with_final": same})
         settled_tier = next((x["tier"] for x in shadow if x["would_exit"] and x["agrees_with_final"]), TIER_TRIAGE)
         evidence = self._evidence(d, s, why, pq)
-        reply, reply_fails, reply_src = self._reply(r, claim, d, route, pq, s)
+        live_edit = edit if route == "auto_apply" and not fails else None
+        reply, reply_fails, reply_src = self._reply(r, claim, d, route, pq, s, live_edit)
         result = {"reportId": r.report_id, "questionId": qid, "verdict": d.verdict, "repair": d.repair
                   if d.verdict == "defect" else None, "edit": public_edit(edit) if not fails else None,
                   "route": route, "confidence": conf, "evidence": evidence, "student_reply": reply}
@@ -156,7 +159,7 @@ class Runner:
                   "disputed": sorted(disputed_items(s)), "key_status": d.key_status, "decided_by": d.decided_by,
                   "basis": d.basis, "notes": d.notes, "agree": d.agree, "against": d.against, "route_why": why,
                   "edit_how": how, "edit_guard_failures": fails, "proposed_edit": public_edit(edit),
-                  "guard": s.guard, "injection_regex": claim.injection,
+                  "guard": s.guard, "injection_regex": claim.injection, "injection_blocks_auto_apply": s.injection,
                   "solvers": [vars(x) for x in s.solvers], "solver_raw": raw_solver, "extract": s.extract,
                   "audit": s.audit, "option_checks": {k: [vars(v) for v in vs] for k, vs in s.option_checks.items()},
                   "value_candidates": s.value_candidates,
@@ -243,6 +246,25 @@ class Runner:
                 s.option_checks[cand].append(self.once(("vtb", qid, cand), lambda c=cand, t=text: run_value_check(
                     self.c, "value_tiebreak", pq, c, t),
                     lambda e: OptionVerdict("value_tiebreak", "", "cannot_tell", e[:80])))
+
+    @staticmethod
+    def _auto_bar(d, s: Signals) -> tuple[bool, str]:
+        """D-023: whether the evidence meets the auto-apply bar for this repair's risk, and why not."""
+        if d.against:
+            return False, ""
+        if d.repair in config.LOW_RISK_REPAIRS:
+            t0 = s.tier0 or {}
+            if any(f.strength in (DEFINITE, SIGNAL) and f.repair == d.repair for f in s.findings) or \
+                    (t0.get("outcome") == "code_settled" and t0.get("repair") == d.repair):
+                return True, ""             # a check finding, or a tier-0 settlement (e.g. a named word confirmed)
+            return False, f"no code check supports the low-risk repair {d.repair} (D-023)"
+        if d.decided_by == "triage":
+            return False, f"high-stakes repair {d.repair} chosen by triage alone, not two independent sources (D-023)"
+        if d.repair in ("answer_key", "type_mismatch") and d.key_status not in (KEY_OK, KEY_WRONG):
+            return False, f"the blind solvers did not confirm the key for {d.repair} (D-023)"
+        if d.complete or d.decided_by == "code+llm":
+            return True, ""
+        return False, ""
 
     @staticmethod
     def _content_sources(d, s: Signals, content: str) -> bool:
@@ -485,9 +507,9 @@ class Runner:
         return out + "." if out else out
 
     # ------------------------------------------------------------------ reply
-    def _reply(self, r, claim, d, route, pq, s):
+    def _reply(self, r, claim, d, route, pq, s, live_edit=None):
         proposed = bool(claim.values or claim.letters) and not s.injection
-        info = self._reply_info(claim, d, route, pq, s)
+        info = self._reply_info(claim, d, route, pq, s, live_edit)
         facts = self._facts(claim, d, route, info, proposed)
         lang = "hinglish" if claim.hinglish else "english"
         try:
@@ -499,7 +521,7 @@ class Runner:
             return self._fallback_reply(d, route, lang, info, proposed), fails, "fallback"
         return text, fails, "llm"
 
-    def _reply_info(self, claim, d, route, pq, s) -> dict:
+    def _reply_info(self, claim, d, route, pq, s, live_edit=None) -> dict:
         """The answer facts the reply may use, all decided by code."""
         info = {"unsound": d.repair == "unsound" or d.key_status == UNSOUND, "answer": "", "step": "",
                 "content": "", "letter": "", "what": ""}
@@ -523,7 +545,9 @@ class Runner:
         if not ans:
             return info
         if pq.has_options:
-            info["answer"] = ", ".join(f"({L}) {pq.split.options_text.get(L, '')}".strip() for L in ans)
+            # option text as students will see it once a live edit is applied (e.g. a corrected spelling)
+            info["answer"] = ", ".join(f"({L}) {_post_edit(pq.split.options_text.get(L, ''), live_edit)}".strip()
+                                       for L in ans)
             info["step"] = self._key_step(s, pq, letters=set(ans))
         else:
             unit = asked_unit(pq.split.stem_text)
@@ -637,6 +661,18 @@ def _model(role: str) -> str:
     return config.ROLES[role][1].split("/")[-1]
 
 
+def _plain(x) -> str:
+    return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]*>", " ", str(x or "")))).strip()
+
+
+def _post_edit(text: str, edit) -> str:
+    """Clean option text after a live question edit, if the edit touches it."""
+    if not edit or edit.get("field") != "question":
+        return text
+    f, r = _plain(edit.get("find")), _plain(edit.get("replace"))
+    return text.replace(f, r) if f and f in text else text
+
+
 def _clip(text: str, n: int) -> str:
     """Cut at a word boundary, with an ellipsis."""
     text = re.sub(r"\s+", " ", str(text or "")).strip()
@@ -712,16 +748,23 @@ def _provider_stats(client) -> dict:
 
 
 def _guard_stats(details) -> dict:
+    """Prompt-guard flag rate. A guard flag (score >= GUARD_THRESHOLD) is logged; on its own it blocks
+    auto-apply only at score >= GUARD_BLOCK_ALONE, or at any flag when the regex detector also fires."""
     n = len(details)
-    flagged = [d for d in details if (d.get("guard") or {}).get("flag")]
+    g = lambda d: (d.get("guard") or {})
+    flagged = [d for d in details if g(d).get("flag")]
     regex = sum(1 for d in details if d.get("injection_regex"))
     both = sum(1 for d in flagged if d.get("injection_regex"))
-    unparsed = sum(1 for d in details if (d.get("guard") or {}).get("label") in ("unparsed", "error"))
+    unparsed = sum(1 for d in details if g(d).get("label") in ("unparsed", "error"))
     return {"reports": n, "prompt_guard_flagged": len(flagged),
             "prompt_guard_flag_rate": round(len(flagged) / n, 3) if n else None,
             "regex_flagged": regex, "both_flagged": both, "guard_only": len(flagged) - both,
             "regex_only": regex - both, "guard_unparsed_or_error": unparsed,
-            "guard_flagged_reports": [d["reportId"] for d in flagged]}
+            "guard_flagged_reports": {d["reportId"]: round(g(d).get("score") or 0, 4) for d in flagged},
+            "guard_flags_logged_only (below block threshold, no regex)": {
+                d["reportId"]: round(g(d).get("score") or 0, 4) for d in flagged
+                if not d.get("injection_regex") and (g(d).get("score") or 0) < config.GUARD_BLOCK_ALONE},
+            "blocked_auto_apply": [d["reportId"] for d in details if d.get("injection_blocks_auto_apply")]}
 
 
 # --------------------------------------------------------------------------

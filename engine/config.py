@@ -46,7 +46,14 @@ FALLBACK_AFTER_S = 60
 DEFAULT_SPEND_CAP_USD = 0.50
 MAX_RETRIES = 4
 TIMEOUT_S = 120
-GUARD_THRESHOLD = 0.5            # prompt-guard score at or above this counts as an injection signal
+GUARD_THRESHOLD = 0.5            # prompt-guard score at or above this is logged as a flag
+GUARD_BLOCK_ALONE = 0.9          # ...but on its own it blocks auto-apply only at or above this; the regex
+                                 # detector flagging as well blocks at any flag (see Signals.injection)
+
+# D-023: the auto-apply bar depends on repair risk
+LOW_RISK_REPAIRS = {"spelling", "noise", "exam_reference", "markup_leak", "answer_form"}
+# every other auto repair (answer_key, stem_data, option_repair, solution_fix, type_mismatch, and also
+# notation and solution_missing) is high-stakes: two independent sources
 GUARD_MAX_CHARS = 1500           # the guard model has a 512-token window
 
 # Numeric matching (stated tolerances)

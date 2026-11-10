@@ -266,7 +266,7 @@ def _numbers(text: str) -> list[float]:
 
 
 def check_reply(text: str, route: str, syllabus: bool = False, *, language: str = "english", facts: str = "",
-                comment: str = "", proposed_answer: bool = True) -> list[str]:
+                comment: str = "", proposed_answer: bool = True, verdict: str = "") -> list[str]:
     """Code checks on the student reply. Any failure -> the caller uses a code-built template instead."""
     fails = []
     if syllabus and _REMOVED.search(text or ""):
@@ -300,7 +300,7 @@ def check_reply(text: str, route: str, syllabus: bool = False, *, language: str 
         fails.append("more than 3 sentences")
     if _INTERNAL.search(text or ""):
         fails.append("internal label")
-    if route != "auto_apply" and _CLAIMS_FIX.search(text or "") and not re.search(
+    if route != "auto_apply" and verdict != "already_fixed" and _CLAIMS_FIX.search(text or "") and not re.search(
             r"\b(will|teacher|faculty|check|review)\b", text or "", re.I):
         fails.append("claims a fix that is not live")
     return fails
@@ -314,7 +314,7 @@ def run_reply(client: Client, report, language: str, verdict: str, route: str, f
     r = client.call("reply", p, msgs, stage="reply", tier=4, subject=report.report_id, temperature=0.3)
     text = str((r.data or {}).get("student_reply") or "").strip()
     return text, check_reply(text, route, syllabus, language=language, facts=facts, comment=report.comment or "",
-                             proposed_answer=proposed_answer)
+                             proposed_answer=proposed_answer, verdict=verdict)
 
 
 def findings_text(findings) -> str:

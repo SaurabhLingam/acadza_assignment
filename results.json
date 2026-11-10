@@ -127,8 +127,8 @@
     "edit": null,
     "route": "faculty_review",
     "confidence": 0.95,
-    "evidence": "Code check: Check confirms a missing/blank distractor; its content is not derivable from the key or solution, so there is no source for the edit. option_missing: Only 3 option(s) stored (A, B, C); missing D. Key: (C) 10 m/s. Stored solution (gpt-oss-20b) ends at 10 m/s = (C). No content proposed for the blank option. Sent to faculty: report flagged as an injection attempt: never auto-applied (D-017); no edit that passes the guards; fewer than two independent sources agree on the missing option content (D-020).",
-    "student_reply": "Thanks for pointing that out. A teacher will review the question and fix the missing option."
+    "evidence": "Code check: Check confirms a missing/blank distractor; its content is not derivable from the key or solution, so there is no source for the edit. option_missing: Only 3 option(s) stored (A, B, C); missing D. Key: (C) 10 m/s. gpt-oss-120b (blind solve): 10 m/s = (C). deepseek-v4-flash (blind solve): 10 m/s = (C). Stored solution (gpt-oss-20b) ends at 10 m/s = (C). No content proposed for the blank option. Sent to faculty: no edit that passes the guards; fewer than two independent sources agree on the missing option content (D-020).",
+    "student_reply": "Thanks for pointing that out. Option D was indeed missing from the question. A teacher will review and fix it."
   },
   {
     "reportId": "R010",
@@ -169,7 +169,7 @@
     "route": "auto_apply",
     "confidence": 0.62,
     "evidence": "Key: (A) Epithellial tisue. gpt-oss-120b (blind solve): (A), letter only (no value given). deepseek-v4-flash (blind solve): (A), letter only (no value given). Stored solution (gpt-oss-20b) ends at (A). Triage (gpt-oss-120b): Spelling suspect signals show 'Epithellial tisue' is misspelled; correcting to 'Epithelial tissue' fixes the error.",
-    "student_reply": "Thanks for spotting the typo. The correct answer is (A) Epithellial tisue, because the inner lining of the small intestine is simple columnar epithelium, and the fix is live now."
+    "student_reply": "Thanks for spotting the typo. The correct answer is (A) Epithelial tissue, because the inner lining of the small intestine is simple columnar epithelium for absorption; other tissues are in submucosa or muscularis."
   },
   {
     "reportId": "R013",
@@ -236,7 +236,7 @@
     "route": "no_change",
     "confidence": 0.42,
     "evidence": "Code check: Student names 'mere'; history entry 'Spelling mistake' by faculty at 2026-11-07T10:42:00Z (after the report at 2026-11-04T02:08:00Z) mentions it, and 'mere' no longer appears in the live text.",
-    "student_reply": "Thanks! A teacher has already fixed this, so the question should look right now."
+    "student_reply": "Thanks for checking carefully. The question has been updated."
   },
   {
     "reportId": "R018",
@@ -505,13 +505,17 @@
   {
     "reportId": "R040",
     "questionId": "6264197209f4fd65f58f5707",
-    "verdict": "no_error",
-    "repair": null,
-    "edit": null,
-    "route": "no_change",
+    "verdict": "defect",
+    "repair": "spelling",
+    "edit": {
+      "field": "solution",
+      "find": "riceis",
+      "replace": "rice is"
+    },
+    "route": "auto_apply",
     "confidence": 0.86,
-    "evidence": "Key: (C) Golden rice. gpt-oss-120b (blind solve): (C), letter only (no value given). deepseek-v4-flash (blind solve): (C), letter only (no value given). Stored solution (gpt-oss-20b) ends at (C). Option checks: (C) correct [gpt-oss-120b].",
-    "student_reply": "Thanks for checking carefully. The correct answer is (C) Golden rice, because it is the only food engineered to contain beta‑carotene, a provitamin A that helps prevent vitamin A deficiency blindness."
+    "evidence": "Key: (C) Golden rice. gpt-oss-120b (blind solve): (C), letter only (no value given). deepseek-v4-flash (blind solve): (C), letter only (no value given). Stored solution (gpt-oss-20b) ends at (C). Triage (gpt-oss-120b): The solution contains the run‑together word 'riceis' which is a spelling error.",
+    "student_reply": "Thanks for spotting the typo. The correct answer is (C) Golden rice, as it provides beta‑carotene to prevent vitamin A deficiency blindness."
   },
   {
     "reportId": "R041",

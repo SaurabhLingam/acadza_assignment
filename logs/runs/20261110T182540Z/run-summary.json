@@ -1,0 +1,112 @@
+{
+  "run_id": "20261110T182540Z",
+  "reports_requested": 44,
+  "reports_done": 44,
+  "full_run": true,
+  "stopped": null,
+  "total_time_s": 13.2,
+  "total_tokens": {
+    "in": 4714,
+    "out": 996
+  },
+  "spend_usd": 0.000134,
+  "spend_cap_usd": 0.5,
+  "spend_by_model": {
+    "groq:openai/gpt-oss-20b": 0.0,
+    "openrouter:openai/gpt-oss-120b": 0.000134
+  },
+  "calls_per_stage": {
+    "guard": 44,
+    "solve": 78,
+    "extract": 39,
+    "audit": 39,
+    "option_check": 25,
+    "triage": 44,
+    "reply": 44,
+    "value_check": 10,
+    "resolve": 4,
+    "tiebreak": 6
+  },
+  "cases_settled_per_tier": {
+    "option_checks+tiebreak": 6,
+    "solver_2+extract+audit": 6,
+    "code": 17,
+    "triage": 5,
+    "solver_1+guard": 10
+  },
+  "routed_to_faculty": 11,
+  "auto_applied": 17,
+  "shadow_early_exit_disagreements": [
+    {
+      "reportId": "R022",
+      "tier": 0,
+      "name": "code",
+      "early": [
+        "defect",
+        "spelling",
+        "auto_apply"
+      ]
+    },
+    {
+      "reportId": "R022",
+      "tier": 1,
+      "name": "solver_1+guard",
+      "early": [
+        "defect",
+        "spelling",
+        "auto_apply"
+      ]
+    },
+    {
+      "reportId": "R022",
+      "tier": 2,
+      "name": "solver_2+extract+audit",
+      "early": [
+        "defect",
+        "spelling",
+        "auto_apply"
+      ]
+    },
+    {
+      "reportId": "R022",
+      "tier": 3,
+      "name": "option_checks+tiebreak",
+      "early": [
+        "defect",
+        "spelling",
+        "auto_apply"
+      ]
+    }
+  ],
+  "injection_flags": {
+    "reports": 44,
+    "prompt_guard_flagged": 2,
+    "prompt_guard_flag_rate": 0.045,
+    "regex_flagged": 1,
+    "both_flagged": 1,
+    "guard_only": 1,
+    "regex_only": 0,
+    "guard_unparsed_or_error": 0,
+    "guard_flagged_reports": {
+      "R009": 0.5144,
+      "R027": 0.998
+    },
+    "guard_flags_logged_only (below block threshold, no regex)": {
+      "R009": 0.5144
+    },
+    "blocked_auto_apply": [
+      "R027"
+    ]
+  },
+  "calls_by_provider": {
+    "fallback_calls": 1,
+    "groq:meta-llama/llama-prompt-guard-2-86m (cache)": 44,
+    "groq:openai/gpt-oss-120b (cache)": 133,
+    "openrouter:deepseek/deepseek-v4-flash (cache)": 47,
+    "groq:openai/gpt-oss-20b (cache)": 79,
+    "groq:openai/gpt-oss-20b": 4,
+    "openrouter:openai/gpt-oss-120b (cache) (fallback)": 25,
+    "openrouter:openai/gpt-oss-120b (fallback)": 1
+  },
+  "results_file": "logs\\runs\\20261110T182540Z\\results.json"
+}

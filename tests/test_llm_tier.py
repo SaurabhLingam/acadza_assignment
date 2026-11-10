@@ -341,7 +341,7 @@ def test_guard_stats():
                        {"reportId": "c", "guard": {"flag": True}, "injection_regex": False},
                        {"reportId": "d", "guard": {"flag": False}, "injection_regex": False}])
     assert st["prompt_guard_flag_rate"] == 0.5 and st["both_flagged"] == 1 and st["guard_only"] == 1
-    assert st["guard_unparsed_or_error"] == 1 and st["guard_flagged_reports"] == ["a", "c"]
+    assert st["guard_unparsed_or_error"] == 1 and set(st["guard_flagged_reports"]) == {"a", "c"}
 
 
 def test_e2e_integer_wrong_key_via_value_checks_and_code_evidence(tmp_path):
@@ -624,3 +624,59 @@ def test_guard_has_no_fallback(tmp_path):
                          [], slept=slept)
     r = c.call("guard", None, MSG, stage="guard", tier=1, json_mode=False, temperature=None)
     assert r.provider == "groq" and [x for x in slept if x > 3] == [90.0]
+
+
+
+# --------------------------------------------------------------------------- D-023, vague comments, guard bar
+
+def test_guard_alone_blocks_only_at_high_score():
+    assert not _sig(guard={"score": 0.514, "flag": True}).injection          # logged only
+    assert _sig(guard={"score": 0.95, "flag": True}).injection
+    assert _sig(guard={"score": 0.514, "flag": True}, injection_regex=True).injection
+
+
+def test_vague_comment_naming_no_answer_lets_checks_decide():
+    from engine.checks import Finding
+    from engine.decide import decide, disputed_items
+    f = Finding("spelling_suspect", "spelling", "signal", "solution", "'canolla' looks misspelled")
+    s = _sig(claim_primary="vague", claim_categories=("vague", "answer"), findings=[f],
+             solvers=[_sv("solver_1", "openai", "A"), _sv("solver_2", "deepseek", "A")])
+    assert disputed_items(s) == {"nothing_specific"}
+    d = decide(s, TAX, upto=3)
+    assert d.verdict == "defect" and d.needs_triage == "repair" and d.allowed_repairs == ("spelling",)
+    # a vague comment that names an answer still disputes the key
+    assert "key" in disputed_items(_sig(claim_primary="vague", claim_categories=("vague", "answer"),
+                                        claim_letters=("B",)))
+
+
+def test_auto_bar_by_repair_risk():
+    from engine.checks import Finding
+    from engine.decide import Decision
+    from engine.run import Runner
+    sup = Finding("spelling_suspect", "spelling", "signal", "question", "x")
+    low = Decision("defect", "spelling", "", 0.62, "triage", False, agree=1)
+    assert Runner._auto_bar(low, _sig(findings=[sup]))[0] is True
+    assert Runner._auto_bar(low, _sig(findings=[]))[0] is False
+    named = _sig(findings=[], tier0={"outcome": "code_settled", "verdict": "defect", "repair": "spelling"})
+    assert Runner._auto_bar(Decision("defect", "spelling", "", 0.95, "code", True), named)[0] is True
+    high = Decision("defect", "solution_fix", "", 0.62, "triage", False, agree=1)
+    ok, why = Runner._auto_bar(high, _sig(findings=[]))
+    assert ok is False and "two independent sources" in why
+    tm = Decision("defect", "type_mismatch", "", 0.95, "code", True, key_status="")
+    assert Runner._auto_bar(tm, _sig())[0] is False
+    tm.key_status = KEY_OK
+    assert Runner._auto_bar(tm, _sig())[0] is True
+
+
+def test_already_fixed_reply_may_say_fixed():
+    from engine.tiers import check_reply
+    t = "Thanks! A teacher already fixed this, so the question looks right now."
+    assert not check_reply(t, "no_change", verdict="already_fixed")
+    assert check_reply("Thanks, it is fixed.", "no_change", verdict="no_error")
+
+
+def test_reply_uses_option_text_after_a_live_edit():
+    from engine.run import _post_edit
+    e = {"field": "question", "find": "Epithellial tisue", "replace": "Epithelial tissue"}
+    assert _post_edit("Epithellial tisue", e) == "Epithelial tissue"
+    assert _post_edit("Epithellial tisue", None) == "Epithellial tisue"
