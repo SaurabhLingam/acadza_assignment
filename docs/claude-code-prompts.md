@@ -166,3 +166,97 @@ session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
 ```text
 Before pushing: confirm .env is gitignored and has never been committed (check git history too), and that no API key appears anywhere in tracked files, including the prompt logs. Only if all of that is clean, add https://github.com/SaurabhLingam/acadza_assignment.git as origin, commit the D-015 edit, and push main.
 ```
+
+---
+
+### 2026-11-10T19:38:02+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+
+
+<pasted_content id="5d75">
+Next: the LLM part of the engine, for the 26 needs_llm reports. Propose the design and the prompt drafts first, then wait for my go-ahead.
+
+First, call the Groq and OpenRouter model-list endpoints with my .env keys and tell me which models are actually available right now. Don't assume names.
+
+What I have in mind:
+- One client for both providers: rate limiting, retries with backoff, a response cache, and the call logging described in CLAUDE.md.
+- Solver: sees only the clean question. No key, no comment, no stored solution. Two different model families. The model gives its final value as a math expression, code evaluates it safely (no exec/eval of arbitrary code) and matches it to an option numerically.
+- An extraction call to pull the final answer out of the stored solution.
+- Per-option checks only where a key change is on the table, to keep calls down.
+- A triage call that sees all the signals and picks verdict + repair from the taxonomy only, plus the edit where code can't build it. The edit must pass the guards.
+- A reply writer on a small model.
+- Routing and confidence decided in code from how many signals agree, never by the model.
+- Shadow mode: run every tier on every report, and log what early exit would have decided.
+- Output results.json in the exact README format.
+
+OpenRouter: I have $2.58 of paid credit, so paid models are allowed, not just :free ones. The model-list endpoint returns pricing. Use it to propose a cheap but strong model from a different family than the Groq solver, for solver #2 and the tie-breaker, and estimate the cost of one full run before running anything. Add a hard spend cap to the client (default $0.50 per run) that stops the run cleanly if it would be exceeded, and log the actual cost of every call. Every call must log which provider and model actually answered.
+
+Prompts go in prompts/ as v1 files. Plan to test on 5 reports first before any full run.
+</pasted_content id="5d75">
+
+```
+
+---
+
+### 2026-11-10T19:40:13+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+try again
+```
+
+---
+
+### 2026-11-10T19:46:36+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+
+
+<pasted_content id="5d75">
+mistake: the LLM-tier design had the triage model choosing the verdict, which contradicts D-001 (the LLM produces signals, code decides). Caught while reviewing the design.
+
+Go ahead and build it, with these changes:
+- Code decides the verdict wherever signals settle it. For answer disputes, solver + option-check agreement with or against the key gives no_error / answer_key / unsound. Triage chooses the verdict only where code can't (e.g. solution_fix vs wrong_question, missing stem data). If triage contradicts the signals, route to faculty.
+- Keep extraction purely factual. Move the stem_data, contradiction and wrong-question flags to a separate check on gpt-oss-120b.
+- Solver answers in the unit the question asks for; numeric matching uses a stated tolerance and handles unit conversion.
+- Add Groq's prompt-guard model as an extra injection signal alongside the regex.
+- Test set: add R034, so 6 reports.
+- Restore .env.example.
+- Add your three decisions to decisions.md, plus one for the verdict split.
+
+Don't make any API calls yet. When it's built, show me all the prompt files verbatim so I can review them before the 6-report test.
+</pasted_content id="5d75">
+
+```
+
+---
+
+### 2026-11-10T21:43:16+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+
+
+<pasted_content id="5d75">
+Reviewed the prompts. Make these changes as v2 files with a CHANGELOG entry "pre-run review", keeping v1 as it is:
+
+1. Integer questions can never reach answer_key, because option checks need options. Add a value check for integerQuestion (is this value correct?) for both the key's value and the solvers' value, and let decide.py use it the same way it uses option checks.
+2. solver: if your answer matches no option, leave chosen_options empty and say so in question_issues; never pick the closest option. Convert degrees with pi/180.
+3. decide.py: a solve whose missing_information is not empty doesn't count as independent agreement.
+4. option_check: put parts and reason before verdict in the JSON, and tell it to work out the answer itself before judging the option.
+5. solution_audit: values that appear in the options count as given.
+6. evidence in results.json: for verdicts code decided, build the evidence string in code from the signals (which model said what, what the stored solution says, what the key says). Add triage's evidence only where triage decided.
+7. reply: for syllabus reports, the question stays live while a teacher checks it; never say it was removed.
+8. Log the prompt-guard flag rate in the run summary.
+
+Then run the tests, commit, and run the 6-report test. Show me for each report: the signals, the final verdict/repair/route, the evidence, the reply, plus the total cost and time.
+</pasted_content id="5d75">
+
+```

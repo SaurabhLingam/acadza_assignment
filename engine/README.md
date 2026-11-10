@@ -1,6 +1,6 @@
 # engine/
 
-Python triage engine. So far: the code-only tier (data profiler). Standard library only; Python 3.10+.
+Python triage engine: the code-only tier (data profiler) and the LLM tiers. Standard library only; Python 3.10+.
 
 ```powershell
 python -m engine.profile          # writes logs/profile/{reports.csv, questions.csv, summary.md}
@@ -16,6 +16,14 @@ python -m pytest tests            # parser tests + project-rule guards
 | `claims.py` | Sorts a comment into a claim category (English + Hinglish) and extracts asserted letters/values/words; injection detector. |
 | `verify.py` | Claim × record × findings → `code_settled` / `code_routed` / `needs_llm` (see `docs/decisions.md` D-007). |
 | `profile.py` | Runs all of the above and writes the profile. |
+| `config.py` | Model per role, tolerances, spend cap, confidence constants. |
+| `llm.py` | One client for Groq + OpenRouter: pacing, rate-limit headers, retries, cache, call log, cost, hard spend cap. |
+| `prompts.py` | Loads `prompts/<name>_v<N>.md` and renders `{{vars}}` (fails on missing/unused). |
+| `mathexpr.py` | Safe `ast`-whitelist evaluator (no eval/exec), units → SI, option/answer quantity matching with stated tolerances. |
+| `tiers.py` | LLM calls → signals: guard, solvers, extract, audit, option checks (value checks for integer questions), triage, reply. |
+| `decide.py` | Code decides verdict / repair / route / confidence from the signals (D-016); shadow-mode per-tier decisions. |
+| `edits.py` | Code-built edits, clean-text → raw mapping for LLM edits (D-019), D-004 guards. |
+| `run.py` | `python -m engine.run [--reports a,b] [--cap 0.5] [--offline]`: full pipeline, `results.json`, run summary. |
 
 Rules are generic: no question or report IDs (D-010, enforced by `tests/test_project_rules.py`).
 

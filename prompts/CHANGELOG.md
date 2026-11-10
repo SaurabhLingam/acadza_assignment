@@ -8,3 +8,66 @@ One entry for each new prompt version. Prompt files live in this folder as `<nam
 - **Why:**
 - **Evidence:** (report IDs, log lines from logs/llm-calls.jsonl, eval-label mismatches)
 -->
+
+## solver_v1: 2026-11-10 (not yet run)
+- **What changed:** First version. Blind solve: sees only the question type, clean stem and options; never the key, the stored solution or the comment (D-002). Answers in the unit the question asks for, as a calculator expression that code evaluates safely and matches to options numerically (with unit conversion). `missing_information` and `question_issues` are extra signals.
+- **Why:** Independent check of the key without anchoring on it. Used by two model families (solver_1 on Groq gpt-oss-120b, solver_2 on OpenRouter deepseek-v4-flash).
+- **Evidence:** Pending the 6-report test run.
+
+## extract_v1: 2026-11-10 (not yet run)
+- **What changed:** First version. Purely factual: what the stored solution ends on (value, unit, option named, final statement). It does not judge the solution or look for problems.
+- **Why:** Code's regex extraction misses symbolic finals. Judgement about the solution lives in `solution_audit_v1`, so this call stays a cheap fact read (gpt-oss-20b).
+- **Evidence:** Pending the 6-report test run.
+
+## solution_audit_v1: 2026-11-10 (not yet run)
+- **What changed:** First version, split out of the extract draft at the user's request. Three yes/no judgements with quoted evidence: values the solution uses that the question never gives (stem_data), internal contradiction (unsound / solution_fix), part of the solution about another question (solution_fix / wrong_question). No key shown.
+- **Why:** These are judgements, not facts, so they run on the stronger gpt-oss-120b and stay separate from extraction.
+- **Evidence:** Pending the 6-report test run.
+
+## option_check_v1: 2026-11-10 (not yet run)
+- **What changed:** First version. Judges one option (or, for integer questions, one candidate answer) at a time, with no key shown; statement options are judged part by part. The same prompt is the tie-breaker on the other model family.
+- **Why:** Called only where a key change is on the table (a solver or the solution differs from the key, the student disputes the key, or the key is malformed), to keep calls down.
+- **Evidence:** Pending the 6-report test run.
+
+## triage_v1: 2026-11-10 (not yet run)
+- **What changed:** First version. Code decides the verdict wherever the signals settle it, and the task block tells triage exactly what is left: the verdict (only where code cannot decide), the repair from a code-given shortlist (e.g. solution_fix vs wrong_question), or a blank option's content. Where code already decided, triage states what it believes so code can detect a contradiction and route to faculty. Edits are proposed in clean text; code maps them to raw HTML. No confidence and no route in the output (D-001).
+- **Why:** The first design let triage choose every verdict, contradicting D-001 (`docs/ai-mistakes.md` M-002).
+- **Evidence:** Pending the 6-report test run.
+
+## reply_v1: 2026-11-10 (not yet run)
+- **What changed:** First version. 1–3 sentences; credits the student when the disputed item was defective (D-015); promises only what the route allows; replies in Hinglish to Hinglish comments; uses only the facts code supplies. Code validates the reply and falls back to a template on failure.
+- **Why:** The student reply is scored, and a reply that says "fixed" when the case is only routed to faculty would be false.
+- **Evidence:** Pending the 6-report test run.
+
+## prompt_guard_v1: 2026-11-10 (not yet run)
+- **What changed:** First version. The student comment verbatim as the only message to Groq's `meta-llama/llama-prompt-guard-2-86m` classifier, with no instructions added. Its score is an injection signal alongside the regex detector in `engine/claims.py`.
+- **Why:** A second, independent injection detector. The reply format (score or label) is parsed defensively and logged raw, to be confirmed in the first test run.
+- **Evidence:** Pending the 6-report test run.
+
+## Pre-run review: 2026-11-10 (solver_v2, option_check_v2, value_check_v1, solution_audit_v2, reply_v2)
+The user reviewed the v1 prompts before any of them ran. The v1 files are kept unchanged; none of them has been used in a logged run.
+
+### solver_v2
+- **What changed:** If the answer matches no option, `chosen_options` stays empty and `question_issues` says so; the solver never picks the closest option. Trigonometric functions take radians, and degrees are converted with pi/180. `missing_information` is null when nothing is missing.
+- **Why:** A closest-option pick would look like agreement with a key, or with another solver, when it is not. A degree value inside sin() would evaluate wrongly in the code evaluator.
+- **Evidence:** Pre-run review by the user. Code enforces the same rule: an evaluated value that matches no numeric option maps to no letters (`engine/tiers.py`).
+
+### option_check_v2
+- **What changed:** The model first works out its own answer (`own_answer`), then writes `parts` and `reason`, and gives `verdict` last.
+- **Why:** If the verdict comes first in the JSON, the reasoning is written after the judgement and only justifies it.
+- **Evidence:** Pre-run review by the user.
+
+### value_check_v1 (new prompt)
+- **What changed:** The integer-question counterpart of option_check: is this candidate value the correct answer? Same structure (`own_answer`, then `reason`, then `verdict`). It is run on the key's value and on each solver value that differs from the key, on gpt-oss-120b (`value_check`), with deepseek-v4-flash as the tie-breaker (`value_tiebreak`).
+- **Why:** Option checks need options, so an integer question could never reach answer_key. `engine/decide.py` uses value checks the same way it uses option checks.
+- **Evidence:** Pre-run review by the user.
+
+### solution_audit_v2
+- **What changed:** Values that appear in the options count as given, so they are not listed under `values_not_in_question`.
+- **Why:** A solution that plugs in an option value (e.g. to verify it) would otherwise be flagged as using unstated stem data.
+- **Evidence:** Pre-run review by the user.
+
+### reply_v2
+- **What changed:** For syllabus reports, the question stays live while a teacher checks it; the reply never says it was or will be removed. Code also adds this to the facts, and `check_reply` rejects a syllabus reply that mentions removal.
+- **Why:** The taxonomy says syllabus claims are faculty-only and the question stays live meanwhile.
+- **Evidence:** Pre-run review by the user; `data/taxonomy.json` (repair `syllabus`).

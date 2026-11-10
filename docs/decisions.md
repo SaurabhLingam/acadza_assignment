@@ -137,3 +137,36 @@ Each entry: **Decision**, **Alternatives considered**, **Why**, **Evidence**. Ne
 - **Alternatives considered:** Judge the report by whether the student's proposed answer is right (would mark R004-style reports `no_error` even though the key is wrong), or let any defect found on the question decide the report's verdict (would turn an unrelated finding into a `defect` verdict for a student who disputed something correct).
 - **Why:** A report is about the thing it disputes. Crediting a student who spotted a real defect, while still correcting their answer, is fair to them. An unrelated defect still gets fixed, through the question-level findings, without rewriting that student's verdict.
 - **Evidence:** R004: key A is wrong (P = ⅓ρv² = 4800 = D, matching the stored solution), but the student's 8225 is also wrong. R034: the student claims the assertion is true, which disputes key D. Verified physics: I = 4I₀cos²(φ/2) gives 2I₀ at π/2, so the assertion is false, and the reason ("always the sum") is false too. No option says both are false, so key D is wrong and the question is unsound; the student's claim is still wrong. Both reports dispute something genuinely defective while proposing a wrong alternative. Implement in the LLM-tier verdict mapping (`engine/verify.py` already keeps question-level findings separate via `unreported`).
+## D-016: Code decides the verdict wherever the signals settle it; triage decides only the rest
+- **Date:** 2026-11-10
+- **Decision:** For answer disputes, agreement between the blind solvers and the per-option checks, for or against the key, decides the verdict in code (`engine/decide.py`):
+  - **no_error:** every solver picks the key and no option check calls it incorrect.
+  - **answer_key:** both solver families agree on the same other answer, the option checks call the key incorrect and that answer correct.
+  - **unsound:** every option is checked and none survives.
+  - Anything short of these leaves the verdict undecided and the route is faculty.
+
+  Solution and stem disputes are decided from the extraction and audit signals the same way. Triage chooses the verdict only where code can't (e.g. solution_fix vs wrong_question, missing stem data without agreeing signals). Where code has decided, triage still states what it believes. If it contradicts the signals, the case goes to faculty.
+- **Alternatives considered:** Let the triage model choose every verdict from all the evidence (the first design, `docs/ai-mistakes.md` M-002).
+- **Why:** D-001: the LLM produces signals and code decides. A verdict that follows from counted agreement is auditable and reproducible, and a model disagreeing with it is itself a signal to send the case to a human.
+- **Evidence:** Offline tests (`tests/test_llm_tier.py`): a two-family wrong key auto-applies; the same case with triage saying no_error goes to faculty; same-family agreement does not count as independent. Real-model evidence pending the 6-report test.
+
+## D-017: A report flagged as an injection never auto-applies
+- **Date:** 2026-11-10
+- **Decision:** If the regex detector or Groq's prompt-guard model flags a comment as an injection attempt, the report's route can be `no_change` or `faculty_review`, never `auto_apply`, even when independent evidence agrees with the change.
+- **Alternatives considered:** Rely on D-002 alone (the solver never sees the comment), so an injection cannot steer the evidence.
+- **Why:** Defence in depth. The comment still reaches the triage and reply calls as quoted data, and a report that tries to manipulate the system deserves a human look before anything it touches goes live. The cost is small: such reports are rare.
+- **Evidence:** Offline test: the injection report gets no_change with the guard flag set, and the solver input never contains the comment.
+
+## D-018: No paid fallback when Groq rate-limits
+- **Date:** 2026-11-10
+- **Decision:** When Groq returns 429 or its rate-limit headers say the quota is spent, the client waits (`retry-after`, `x-ratelimit-reset-*`, else exponential backoff) and retries. It never re-sends the call to a paid OpenRouter model.
+- **Alternatives considered:** Fall back to `openai/gpt-oss-120b` on OpenRouter ($0.15 / $0.60 per million tokens), which would raise the worst case of a full run to about $0.40.
+- **Why:** The run is not time-critical, the spend cap is $0.50 and the key's own limit is $1.50. A silent paid fallback would also change which provider answered, which matters for the logs.
+- **Evidence:** Pending: the waits and retries are logged per call in `logs/llm-calls.jsonl`.
+
+## D-019: LLM-proposed edits are written in clean text and mapped to raw HTML by code
+- **Date:** 2026-11-10
+- **Decision:** Where code can't build an edit itself, triage proposes `{field, find_clean, replace}` against the clean rendered text it was shown. Code maps `find_clean` to the exact raw-HTML substring with the D-008 locator, requires that substring to be unique, HTML-escapes the replacement, and runs the D-004 guards. An edit that would replace MathML with plain text fails a guard.
+- **Alternatives considered:** Show the model raw HTML and let it write the raw `find` itself.
+- **Why:** Models copy raw production HTML badly (nested unclosed spans, entities, MathML). Mapping in code means a `find` is never invented, and a failed mapping just leaves the edit for faculty.
+- **Evidence:** `tests/test_parse.py::test_locate_raw_across_tags`; guard tests in `tests/test_llm_tier.py`. Real mapping rate pending the 6-report test.
