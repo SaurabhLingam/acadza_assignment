@@ -1,0 +1,24 @@
+# secrets
+.env
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# engine caches
+.cache/
+cache/
+
+# node
+node_modules/
+
+# large run logs
+logs/llm-calls.jsonl
+
+# local Claude Code overrides
+.claude/settings.local.json
