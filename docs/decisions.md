@@ -127,3 +127,13 @@ Each entry: **Decision**, **Alternatives considered**, **Why**, **Evidence**. Ne
 - **Alternatives considered:** Always run the LLM tier, in case the comment hides a content problem.
 - **Why:** These verdicts are about the platform, not the question. Code can check the one thing that could make them wrong (missing or broken stored content) directly. The display check is the important guard: "only 3 options showing" must become `option_repair`, not `display_issue`.
 - **Evidence:** `tests/test_verify.py`: "options are cut on my phone screen" settles as `display_issue` with A–D present, and goes to `needs_llm` when an option is missing or blank. First profiler run: 4 reports settled this way.
+
+## D-015: The verdict follows whether the disputed thing is defective, not whether the student's alternative is right
+- **Date:** 2026-11-10
+- **Decision:** The verdict depends on whether the thing the student disputes (the key, an option, the text) is actually defective, not on whether their proposed alternative is right.
+  - R004/R034 pattern: the student says the key is wrong and it is, but their own answer is also wrong → `defect`, and the reply credits them and corrects them.
+  - If what they dispute is fine (e.g. "change it to C" when the key is right) → `no_error` for that report, and any unrelated defect the checks find goes on the question-level findings list instead.
+  - Only when the comment disputes nothing specific ("wrong") do the checks decide the verdict.
+- **Alternatives considered:** Judge the report by whether the student's proposed answer is right (would mark R004-style reports `no_error` even though the key is wrong), or let any defect found on the question decide the report's verdict (would turn an unrelated finding into a `defect` verdict for a student who disputed something correct).
+- **Why:** A report is about the thing it disputes. Crediting a student who spotted a real defect, while still correcting their answer, is fair to them. An unrelated defect still gets fixed, through the question-level findings, without rewriting that student's verdict.
+- **Evidence:** R004 (key A is wrong, the solution gives 4800 = D; the student's 8225 is also wrong) and R034 (the student disputes the assertion; the solution contradicts itself). Implement in the LLM-tier verdict mapping (`engine/verify.py` already keeps question-level findings separate via `unreported`).

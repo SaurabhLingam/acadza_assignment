@@ -144,3 +144,15 @@ session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
 ```text
 Yes, add all four judgment calls to decisions.md. For the display/app/language one, confirm the claim check means an "options cut off" report only settles as display_issue if all options actually exist in the record. Then commit everything so far with a clear message.
 ```
+
+---
+
+### 2026-11-10T19:21:43+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+decision: the verdict depends on whether the thing the student disputes (the key, an option, the text) is actually defective, not on whether their proposed alternative is right. R004/R034 pattern: student says the key is wrong and it is, but their own answer is also wrong → defect, and the reply credits them and corrects them. If what they dispute is fine (e.g. "change it to C" when the key is right) → no_error for that report, and any unrelated defect checks find goes on the question-level findings list instead. Only when the comment disputes nothing specific ("wrong") do the checks decide the verdict.
+
+Also rename the branch from master to main and commit.
+```
