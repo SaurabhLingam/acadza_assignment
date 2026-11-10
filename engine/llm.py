@@ -159,6 +159,8 @@ class Client:
         self._prices: dict[str, tuple[float, float]] | None = None
         self._dropped_params: dict[str, set] = {}
         self.calls_by_stage: dict[str, int] = {}
+        self._limited_until: dict[tuple, float] = {}   # (provider, model) -> monotonic time its rate limit ends
+        self.fallback_calls = 0
         self.tokens_in_total = 0
         self.tokens_out_total = 0
 
@@ -240,45 +242,75 @@ class Client:
         self.calls_by_stage[stage] = self.calls_by_stage.get(stage, 0) + 1
         base = {"timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"), "run_id": self.run_id,
                 "stage": stage, "tier": tier, "role": role, "subject": subject, "provider": provider,
-                "model": model, "prompt_file": prompt_file, "prompt_version": prompt_version,
-                "input_hash": input_hash}
+                "model": model, "provider_requested": provider, "model_requested": model,
+                "prompt_file": prompt_file, "prompt_version": prompt_version, "input_hash": input_hash}
 
         cache_file = self.cache_dir / f"{input_hash}.json"
         if self.use_cache and cache_file.exists():
             c = json.loads(cache_file.read_text(encoding="utf-8"))
-            self._log({**base, "model_answered": c["model_answered"], "upstream_provider": c["upstream_provider"],
+            self._log({**base, "provider": c.get("provider", provider), "model": c.get("model", model),
+                       "fallback": c.get("fallback", False),
+                       "model_answered": c["model_answered"], "upstream_provider": c["upstream_provider"],
                        "tokens_in": c["tokens_in"], "tokens_out": c["tokens_out"], "latency_ms": 0,
                        "cache_hit": True, "retries": 0, "cost_usd": 0.0, "cost_source": "cache", "status": "ok"})
             return Result(c["content"], parse_json(c["content"]) if json_mode else None, model,
-                          c["model_answered"], provider, c["upstream_provider"], c["tokens_in"], c["tokens_out"],
+                          c["model_answered"], c.get("provider", provider), c["upstream_provider"], c["tokens_in"],
+                          c["tokens_out"],
                           0.0, True, 0, 0)
         if self.offline:
             raise LLMError(f"offline mode and no cache entry for {role}/{subject}")
 
-        pin, pout = self._price(provider, model)
-        est_in = sum(len(m["content"]) for m in messages) / 3 + 50   # conservative: ~3 chars per token
-        worst = est_in * pin + max_tokens * pout
-        if self.spend.spent_usd + worst > self.spend.cap_usd:
-            self._log({**base, "status": "budget_stop", "cache_hit": False, "retries": 0, "cost_usd": 0.0,
-                       "worst_case_usd": round(worst, 6), "spent_usd": round(self.spend.spent_usd, 6),
-                       "cap_usd": self.spend.cap_usd})
-            raise BudgetExceeded(f"{role}: worst case ${worst:.4f} would exceed cap "
-                                 f"${self.spend.cap_usd:.2f} (spent ${self.spend.spent_usd:.4f})")
+        requested = (provider, model)
+        fallback = config.FALLBACKS.get((provider, model))
+        fallback_reason = ""
 
-        url = config.PROVIDERS[provider]["base_url"] + "/chat/completions"
-        body = {"model": model, "messages": list(messages), **params}
-        if provider == "openrouter":
-            body["usage"] = {"include": True}
-        for p in self._dropped_params.get(model, ()):
-            body.pop(p, None)
+        def setup(provider, model):
+            """Price, worst-case cap check, URL and body for one provider/model."""
+            pin, pout = self._price(provider, model)
+            est_in = sum(len(m["content"]) for m in messages) / 3 + 50   # conservative: ~3 chars per token
+            worst = est_in * pin + max_tokens * pout
+            if self.spend.spent_usd + worst > self.spend.cap_usd:
+                self._log({**base, "provider": provider, "model": model, "status": "budget_stop",
+                           "cache_hit": False, "retries": 0, "cost_usd": 0.0, "worst_case_usd": round(worst, 6),
+                           "spent_usd": round(self.spend.spent_usd, 6), "cap_usd": self.spend.cap_usd})
+                raise BudgetExceeded(f"{role}: worst case ${worst:.4f} on {provider} would exceed cap "
+                                     f"${self.spend.cap_usd:.2f} (spent ${self.spend.spent_usd:.4f})")
+            url = config.PROVIDERS[provider]["base_url"] + "/chat/completions"
+            body = {"model": model, "messages": list(messages), **params}
+            if provider == "openrouter":
+                body["usage"] = {"include": True}
+            for p in self._dropped_params.get(model, ()):
+                body.pop(p, None)
+            return pin, pout, worst, url, body
 
-        retries, t0, json_repair_used = 0, time.monotonic(), False
+        # D-022: a primary already known to be rate-limited for longer than the threshold goes straight
+        # to its fallback (same model on another provider) for as long as the limit lasts
+        known_wait = self._limited_until.get(requested, 0) - time.monotonic()
+        if fallback and known_wait > config.FALLBACK_AFTER_S:
+            fallback_reason = f"{provider} rate-limited for another {known_wait:.0f}s"
+            provider, model = fallback
+        pin, pout, worst, url, body = setup(provider, model)
+
+        retries, t0, json_repair_used, json_validate_retry = 0, time.monotonic(), False, False
+        waited = 0.0                      # rate-limit waiting on the current provider
         while True:
             if retries and self.spend.spent_usd + worst > self.spend.cap_usd:
-                self._log({**base, "status": "budget_stop", "cache_hit": False, "retries": retries,
-                           "cost_usd": 0.0, "worst_case_usd": round(worst, 6),
-                           "spent_usd": round(self.spend.spent_usd, 6), "cap_usd": self.spend.cap_usd})
+                self._log({**base, "provider": provider, "model": model, "status": "budget_stop",
+                           "cache_hit": False, "retries": retries, "cost_usd": 0.0,
+                           "worst_case_usd": round(worst, 6), "spent_usd": round(self.spend.spent_usd, 6),
+                           "cap_usd": self.spend.cap_usd})
                 raise BudgetExceeded(f"{role}: retry would exceed cap ${self.spend.cap_usd:.2f}")
+            pending = self._wait_until.get(provider, 0) - time.monotonic()
+            on_primary = (provider, model) == requested
+            if fallback and on_primary and waited + max(pending, 0) > config.FALLBACK_AFTER_S:
+                self._limited_until[requested] = time.monotonic() + max(pending, 0)
+                fallback_reason = f"{provider} rate-limit headers ask for a {pending:.0f}s wait"
+                provider, model = fallback
+                pin, pout, worst, url, body = setup(provider, model)
+                waited = 0.0
+                continue
+            if on_primary and pending > 0:
+                waited += pending             # header-driven waiting counts towards the threshold
             self._pace(provider)
             try:
                 st, hdrs, text = self.transport("POST", url, self._headers(provider), body, config.TIMEOUT_S)
@@ -297,6 +329,13 @@ class Client:
                     self._account(provider, model, resp, pin, pout)
                     continue
                 break
+            if st == 400 and "json_validate_failed" in (text or "") and "response_format" in body \
+                    and not json_validate_retry and retries < config.MAX_RETRIES:
+                # the provider's JSON validator rejected this generation: retry once without JSON mode
+                # (the reply is still parsed as JSON by parse_json, with the usual repair turn)
+                json_validate_retry, retries = True, retries + 1
+                body.pop("response_format")
+                continue
             bad_param = None
             if st == 400:
                 for p in ("response_format", "temperature"):
@@ -308,32 +347,52 @@ class Client:
                 retries += 1
                 continue
             retryable = st is None or st == 429 or st >= 500
+            wait = _duration_s(hdrs.get("retry-after")) or min(60.0, 2 ** (retries + 1)) * (0.5 + random.random())
+            if st == 429 and fallback and (provider, model) == requested and \
+                    waited + wait > config.FALLBACK_AFTER_S:
+                self._limited_until[requested] = time.monotonic() + wait
+                fallback_reason = f"{provider} HTTP 429, retry-after {wait:.0f}s (waited {waited:.0f}s already)"
+                provider, model = fallback
+                pin, pout, worst, url, body = setup(provider, model)
+                retries, waited = retries + 1, 0.0
+                continue
             if not retryable or retries >= config.MAX_RETRIES:
-                self._log({**base, "status": "error", "http_status": st, "error": text[:300], "cache_hit": False,
-                           "retries": retries, "latency_ms": int((time.monotonic() - t0) * 1000), "cost_usd": 0.0})
+                self._log({**base, "provider": provider, "model": model, "status": "error", "http_status": st,
+                           "error": text[:300], "cache_hit": False, "retries": retries,
+                           "fallback": (provider, model) != requested, "fallback_reason": fallback_reason,
+                           "latency_ms": int((time.monotonic() - t0) * 1000), "cost_usd": 0.0})
                 raise LLMError(f"{role}: HTTP {st}: {text[:200]}")
             retries += 1
-            wait = _duration_s(hdrs.get("retry-after")) or min(60.0, 2 ** retries) * (0.5 + random.random())
+            if st == 429:
+                waited += wait
             self.sleep(wait)
 
         cost, cost_source = self._account(provider, model, resp, pin, pout)
         usage = resp.get("usage") or {}
         self.tokens_in_total += int(usage.get("prompt_tokens") or 0)
         self.tokens_out_total += int(usage.get("completion_tokens") or 0)
+        is_fallback = (provider, model) != requested
+        if is_fallback:
+            self.fallback_calls += 1
         res = Result(
-            content=content, data=data, model_requested=model, model_answered=resp.get("model", ""),
+            content=content, data=data, model_requested=requested[1], model_answered=resp.get("model", ""),
             provider=provider, upstream_provider=resp.get("provider", provider),
             tokens_in=int(usage.get("prompt_tokens") or 0), tokens_out=int(usage.get("completion_tokens") or 0),
             cost_usd=cost, cache_hit=False, retries=retries, latency_ms=int((time.monotonic() - t0) * 1000))
-        self._log({**base, "model_answered": res.model_answered, "upstream_provider": res.upstream_provider,
+        self._log({**base, "provider": provider, "model": model, "fallback": is_fallback,
+                   "fallback_reason": fallback_reason,
+                   "model_answered": res.model_answered, "upstream_provider": res.upstream_provider,
                    "tokens_in": res.tokens_in, "tokens_out": res.tokens_out, "latency_ms": res.latency_ms,
                    "cache_hit": False, "retries": retries, "cost_usd": round(cost, 8), "cost_source": cost_source,
                    "status": "ok" if (data is not None or not json_mode) else "bad_json",
-                   "dropped_params": sorted(self._dropped_params.get(model, ()))})
+                   "dropped_params": sorted(self._dropped_params.get(model, ())),
+                   "json_mode_retry": json_validate_retry})
         if self.use_cache and (data is not None or not json_mode):
+            # cached under the role's primary key, so a rerun reuses it whoever answered
             self.cache_dir.mkdir(parents=True, exist_ok=True)
             cache_file.write_text(json.dumps({
                 "content": content, "model_answered": res.model_answered, "upstream_provider": res.upstream_provider,
+                "provider": provider, "model": model, "fallback": is_fallback,
                 "tokens_in": res.tokens_in, "tokens_out": res.tokens_out}, ensure_ascii=False), encoding="utf-8")
         return res
 
@@ -346,5 +405,5 @@ class Client:
         else:
             cost = int(usage.get("prompt_tokens") or 0) * pin + int(usage.get("completion_tokens") or 0) * pout
             src = "list_price_estimate"
-        self.spend.add(model, cost)
+        self.spend.add(f"{provider}:{model}", cost)
         return cost, src

@@ -212,7 +212,11 @@ def resolve_key(s: Signals) -> tuple[str, tuple | None, list[str], int, int]:
         basis.append("option checks find every option incorrect")
         return UNSOUND, None, basis, len(s.option_letters), 0
 
-    if on_key and not off_key and all(v != "incorrect" for v in key_check.values()):
+    # a counted solver that answered but found no option matching its answer disputes the key too
+    no_fit = [sv.family for sv in s.solvers if counts(sv) and not sv.letters]
+    if no_fit:
+        basis.append(f"solver(s) {', '.join(sorted(set(no_fit)))} found no option matching their answer")
+    if on_key and not off_key and not no_fit and all(v != "incorrect" for v in key_check.values()):
         basis.append(f"solver(s) {', '.join(sorted(set(on_key)))} pick the key {''.join(sorted(key))}")
         if any(v == "correct" for v in key_check.values()):
             basis.append("option check confirms the key")
@@ -229,7 +233,7 @@ def resolve_key(s: Signals) -> tuple[str, tuple | None, list[str], int, int]:
                 basis.append(f"solver families {', '.join(sorted(fams))} both pick {''.join(sorted(alt))}; "
                              f"option checks: key {''.join(sorted(key))} incorrect, {''.join(sorted(alt))} correct")
                 return KEY_WRONG, tuple(sorted(alt)), basis, len(fams) + 2, 0
-    against = len(off_key) + sum(v == "incorrect" for v in key_check.values())
+    against = len(off_key) + len(no_fit) + sum(v == "incorrect" for v in key_check.values())
     basis.append(f"no settled agreement (on key: {on_key}, off key: {[(f, ''.join(sorted(a))) for f, a in off_key]}, "
                  f"key checks: {key_check})")
     return UNCLEAR, None, basis, len(on_key), against
@@ -438,6 +442,7 @@ def _confirm_tier0(s: Signals, t0: dict) -> Decision:
     """Tier-0 decisions stand, but LLM signals can count against them (and block auto-apply)."""
     verdict, repair = t0.get("verdict") or None, t0.get("repair") or None
     agree, against, basis = 1, 0, [t0.get("basis", "")]
+    status = ""
     if repair in ("answer_key", "type_mismatch") and s.solvers:
         status, answer, kb, a, b = resolve_key(_with_key(s, s.key))
         if status == KEY_OK:
@@ -446,7 +451,8 @@ def _confirm_tier0(s: Signals, t0: dict) -> Decision:
             against += max(b, 1)
             basis.append("LLM signals disagree with the normalised key: " + "; ".join(kb))
     d = Decision(verdict, repair, t0.get("route") or "", confidence(agree, against, definite=True), "code",
-                 True, basis, tuple(s.key) if repair in ("answer_key", "type_mismatch") else None, agree, against)
+                 True, basis, tuple(s.key) if repair in ("answer_key", "type_mismatch") else None, agree, against,
+                 key_status=status)
     return d
 
 

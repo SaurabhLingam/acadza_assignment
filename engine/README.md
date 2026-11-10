@@ -17,7 +17,7 @@ python -m pytest tests            # parser tests + project-rule guards
 | `verify.py` | Claim × record × findings → `code_settled` / `code_routed` / `needs_llm` (see `docs/decisions.md` D-007). |
 | `profile.py` | Runs all of the above and writes the profile. |
 | `config.py` | Model per role, tolerances, spend cap, confidence constants. |
-| `llm.py` | One client for Groq + OpenRouter: pacing, rate-limit headers, retries, cache, call log, cost, hard spend cap. |
+| `llm.py` | One client for Groq + OpenRouter: pacing, rate-limit headers, retries, cache, call log (with the provider that answered), cost, hard spend cap; same-model OpenRouter fallback after 60 s of Groq rate limiting (D-022). |
 | `prompts.py` | Loads `prompts/<name>_v<N>.md` and renders `{{vars}}` (fails on missing/unused). |
 | `mathexpr.py` | Safe `ast`-whitelist evaluator (no eval/exec), units → SI, option/answer quantity matching with stated tolerances. |
 | `tiers.py` | LLM calls → signals: guard, solvers, extract, audit, option checks (value checks for integer questions), triage, reply. |

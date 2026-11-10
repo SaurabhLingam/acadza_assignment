@@ -19,8 +19,8 @@ from . import config
 from .checks import DEFINITE, SIGNAL, build_vocab, parse_question, run_checks
 from .claims import classify
 from .decide import (KEY_OK, KEY_WRONG, TIER_NAMES, TIER_TRIAGE, UNSOUND, OptionVerdict, Signals, confidence,
-                     counts, decide, disputed_items, route_for, same_value, triage_contradicts, value_cand,
-                     value_clusters)
+                     SolverSig, counts, decide, disputed_items, route_for, same_value, triage_contradicts,
+                     value_cand, value_clusters)
 from .edits import code_edit, guard, map_clean_edit, public_edit, value_correction_check
 from .llm import BudgetExceeded, Client, LLMError
 from .loader import ROOT, load_questions, load_reports, load_taxonomy
@@ -28,6 +28,30 @@ from .mathexpr import parse_quantity, same_quantity, to_si
 from .tiers import (asked_unit, findings_text, integer_match, run_audit, run_extract, run_guard,
                     run_option_check, run_reply, run_solver, run_triage, run_value_check)
 from .verify import decide as decide_tier0
+
+# Student-facing description of each repair, used as a reply fact (code-decided, never model-written).
+WHAT_WAS_WRONG = {
+    "answer_key": "the answer key was wrong.",
+    "answer_key_malformed": "the answer key was saved in a broken format, so correct answers were marked wrong.",
+    "type_mismatch": "the question was set as multiple-correct, but only one option is correct; it is now "
+                     "single-correct, so marking it works properly.",
+    "option_repair": "one of the options was blank or cut off.",
+    "solution_fix": "the worked solution had a mistake.",
+    "stem_data": "the question left out a value that is needed to solve it.",
+    "spelling": "the question text had a spelling mistake.",
+    "markup_leak": "the question showed raw formatting code instead of clean text.",
+    "exam_reference": "the question carried an exam label it should not have.",
+    "answer_form": "the question did not say what form or unit the answer should be in.",
+    "unsound": "as written, no option is correct.",
+    "wrong_question": "the solution belongs to a different question.",
+    "syllabus": "",
+    "wrong_chapter": "the question is filed under the wrong chapter.",
+    "noise": "the question text had stray characters in it.",
+    "notation": "the question used confusing notation.",
+    "solution_missing": "the worked solution was missing.",
+    "identical_options": "two of the options were the same.",
+    "diagram": "the figure the question needs was missing or wrong.",
+}
 
 RESULT_KEYS = ("reportId", "questionId", "verdict", "repair", "edit", "route", "confidence", "evidence",
                "student_reply")
@@ -130,7 +154,7 @@ class Runner:
                   "route": route, "confidence": conf, "evidence": evidence, "student_reply": reply}
         detail = {"reportId": r.report_id, "tier0": s.tier0, "claim": claim.as_dict(),
                   "disputed": sorted(disputed_items(s)), "key_status": d.key_status, "decided_by": d.decided_by,
-                  "basis": d.basis, "agree": d.agree, "against": d.against, "route_why": why,
+                  "basis": d.basis, "notes": d.notes, "agree": d.agree, "against": d.against, "route_why": why,
                   "edit_how": how, "edit_guard_failures": fails, "proposed_edit": public_edit(edit),
                   "guard": s.guard, "injection_regex": claim.injection,
                   "solvers": [vars(x) for x in s.solvers], "solver_raw": raw_solver, "extract": s.extract,
@@ -373,7 +397,34 @@ class Runner:
                 if not bad:
                     d.notes.append(f"Solution edit changes only the final value {wrong:g} -> {right_sol:g}, "
                                    "matching the key, both blind solves and the independent check")
+        if d.repair == "stem_data" and not fails:
+            fails += self._resolve_check(d, s, pq, e)
         return e, how, fails
+
+    def _resolve_check(self, d, s: Signals, pq, e) -> list[str]:
+        """D-021: content inserted into the stem must let a blind re-solve reproduce the keyed answer."""
+        fc, rc, stem = e.get("_find_clean"), e.get("_replace_clean"), pq.split.stem_text
+        if e["field"] != "question" or not fc or rc is None or stem.count(fc) != 1:
+            d.notes.append("Stem edit could not be re-solved: the edited span is not found once in the stem")
+            return ["stem edit cannot be re-solved (D-021)"]
+        new_stem = stem.replace(fc, rc, 1)
+        results = []
+        for role in ("solver_1", "solver_2"):
+            sig, _ = self.once(("resolve", pq.q.id, role, new_stem),
+                               lambda role=role: run_solver(self.c, role, pq, stem_text=new_stem),
+                               lambda err, role=role: (SolverSig(role, "", False, error=err[:120]), {}))
+            if pq.q.qtype == "integerQuestion":
+                ok = integer_match(sig, pq) is True
+            else:
+                ok = bool(sig.letters) and set(sig.letters) == set(s.key)
+            results.append((sig, ok))
+        counted = [ok for sig, ok in results if counts(sig)]
+        desc = "; ".join(_show_solver(sig, pq).replace("(blind solve)", "(re-solve)") for sig, _ in results)
+        if counted and all(counted):
+            d.notes.append(f"Re-solve with \"{rc}\" in the stem reproduces the key: {desc}")
+            return []
+        d.notes.append(f"Re-solve with \"{rc}\" in the stem does not reproduce the key: {desc}")
+        return ["re-solve with the inserted value does not reproduce the keyed answer (D-021)"]
 
     EVIDENCE_MAX = 600
 
@@ -381,7 +432,7 @@ class Runner:
     def _evidence(cls, d, s: Signals, why, pq) -> str:
         """Built in code from the signals: which model said what, what the stored solution and the key say.
         Triage's own evidence is added only where triage decided (the verdict, or the repair from a shortlist)."""
-        parts = []
+        parts, low = [], []
         t0 = s.tier0 or {}
         if t0.get("outcome") in ("code_settled", "code_routed") and t0.get("basis"):
             parts.append(f"Code check: {t0['basis']}")
@@ -400,6 +451,7 @@ class Runner:
             checks = _show_checks(s)
             if checks:
                 parts.append(checks)
+                low = [checks]                 # dropped first when the evidence is too long
         parts += d.notes
         au = s.audit or {}
         if au.get("values_not_in_question") and "stem_data" in disputed:
@@ -415,12 +467,18 @@ class Runner:
             parts.append(f"Triage ({_model('triage')}): {s.triage['evidence']}")
         if why and d.verdict in ("defect", None):
             parts.append("Sent to faculty: " + "; ".join(why))
+        # over the limit: drop the per-option check line first, then the solver lines (their outcome is
+        # already in the code notes / basis), then anything that still does not fit
+        solver_lines = [p for p in parts if "(blind solve)" in str(p)]
+        norm = lambda p: re.sub(r"\s+", " ", str(p)).strip().rstrip(".").strip()
+        kept = [p for p in parts if norm(p)]
+        for drop in (low, solver_lines):
+            if len(". ".join(map(norm, kept))) <= cls.EVIDENCE_MAX:
+                break
+            kept = [p for p in kept if p not in drop]
         out = ""
-        for p in parts:                       # keep whole parts, in order, within the limit
-            p = re.sub(r"\s+", " ", str(p)).strip().rstrip(".").strip()
-            if not p:
-                continue
-            nxt = f"{out}. {p}" if out else p
+        for p in kept:                        # keep whole parts, in order, within the limit
+            nxt = f"{out}. {norm(p)}" if out else norm(p)
             if len(nxt) > cls.EVIDENCE_MAX:
                 continue
             out = nxt
@@ -444,7 +502,11 @@ class Runner:
     def _reply_info(self, claim, d, route, pq, s) -> dict:
         """The answer facts the reply may use, all decided by code."""
         info = {"unsound": d.repair == "unsound" or d.key_status == UNSOUND, "answer": "", "step": "",
-                "content": "", "letter": ""}
+                "content": "", "letter": "", "what": ""}
+        if d.verdict == "defect" and d.repair:
+            malformed = any(f.check == "answer_malformed" for f in s.findings)
+            info["what"] = (WHAT_WAS_WRONG["answer_key_malformed"] if d.repair == "answer_key" and malformed
+                            else WHAT_WAS_WRONG.get(d.repair, ""))
         if info["unsound"]:
             return info
         if d.repair == "option_repair":
@@ -490,6 +552,8 @@ class Runner:
         if info["unsound"]:
             lines.append("No option is correct as written, so there is no right option to tell the student. "
                          "Do not name any option or value as the answer.")
+        if info["what"]:
+            lines.append(f"What was wrong with the question: {info['what']}")
         if info["answer"]:
             lines.append(f"Correct answer: {info['answer']}")
         if info["content"]:
@@ -543,9 +607,12 @@ class Runner:
             if hi:
                 return (f"Humne ise alag se dobara solve kiya: sahi answer {ans} hai, aur question theek hai."
                         if ans else "Humne ise dobara check kiya: question aur answer theek hain.")
-            lead = "Thanks for checking. " if proposed else ""
+            lead = "Thanks for checking it carefully. " if proposed else ""
+            step = info.get("step") or ""
+            tail = f" Key step: {step.rstrip('.')}." if step and len(step) <= 160 else ""
             return (lead + (f"We re-solved it independently and the correct answer is {ans}, so the question is "
-                            "right as given." if ans else "We re-checked it and the question is right as given."))
+                            "right as given." if ans else "We re-checked it and the question is right as given.")
+                    + tail)
         if d.verdict in ("display_issue", "app_issue"):
             return ("Thanks batane ke liye. Question khud theek hai; yeh problem app team ko bhej di hai." if hi else
                     "Thanks for telling us. The question itself is fine; we've passed this to the app team.")
@@ -628,6 +695,22 @@ def _show_checks(s: Signals) -> str:
     return f"{name}: " + "; ".join(items)
 
 
+def _provider_stats(client) -> dict:
+    """Which provider answered this run's calls (from the call log): cache hits, live calls, D-022 fallbacks."""
+    out = {"fallback_calls": client.fallback_calls}
+    try:
+        lines = client.log_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return out
+    for line in lines:
+        x = json.loads(line)
+        if x.get("run_id") != client.run_id or x.get("status") != "ok":
+            continue
+        k = f"{x.get('provider')}:{x.get('model')}" + (" (cache)" if x.get("cache_hit") else "") +             (" (fallback)" if x.get("fallback") else "")
+        out[k] = out.get(k, 0) + 1
+    return out
+
+
 def _guard_stats(details) -> dict:
     n = len(details)
     flagged = [d for d in details if (d.get("guard") or {}).get("flag")]
@@ -707,6 +790,7 @@ def main(argv=None):
         "auto_applied": sum(1 for x in out if x["route"] == "auto_apply"),
         "shadow_early_exit_disagreements": shadow_dis,
         "injection_flags": _guard_stats(details),
+        "calls_by_provider": _provider_stats(client),
         "results_file": str((run_dir / "results.json").relative_to(ROOT)),
     }
     (run_dir / "run-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")

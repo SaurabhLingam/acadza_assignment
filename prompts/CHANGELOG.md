@@ -94,3 +94,8 @@ The v2 prompts (and triage_v1) were used in run `20261110T161819Z` and stay unch
 - **What changed:** When the task says the stored solution ends at a wrong value and gives the agreed value, triage proposes the minimal solution_fix edit: the shortest unique span around the wrong final value, with only that value changed. Code puts the wrong and agreed values in the task block only when the key, both solver families and the option/value check all agree.
 - **Why:** In R016 triage chose solution_fix but returned `"edit": null` with no reason (the cached response confirms it). The task block made the edit optional ("only if the repair needs one") and never told triage which value to change, so the case went to faculty for want of an edit.
 - **Evidence:** Run `20261110T161819Z`, R016; cached triage response for that call.
+
+## reply_v4: 2026-11-10
+- **What changed:** The reply never opens with "your answer is not correct" or anything like it; it opens by acknowledging the student's effort or with the right answer, then gives the key step. A differing student answer may be mentioned gently after the key step. `check_reply` rejects a reply whose first sentence tells the student they were wrong (fallback: the code template, which now also gives the key step). Code also now supplies a "what was wrong with the question" fact for every defect, including reports code settled on its own.
+- **Why:** User review of run `20261110T172651Z`: R029 opened "Your answer of 0.4 is not correct". R021's reply invented a "negative sign" explanation because code-settled reports got no answer or what-changed facts.
+- **Evidence:** Run `20261110T172651Z`, R021, R029 (R020 also explained physics not in its facts).

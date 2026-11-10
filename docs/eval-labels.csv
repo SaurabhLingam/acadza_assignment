@@ -33,7 +33,7 @@ R030,6956d7e988d7701e5617bd3e,no_error,,D,pi = A*(pi/8)*cos(pi/4) so A = 8*sqrt2
 R031,68dea619d0cda73d07e93aee,no_error,,4,(1/2)(pi/2 - pi/4)t^2 = 2*pi so t = 4 s,user_verified
 R032,68dea7c2387eea3d0d95f9bb,no_error,,8,Shift = 0.08 m = 8 cm; question asks in cm,user_verified
 R033,68dea715387eea3d0d95f790,no_error,,3113,6*7.203^2 = 311.299 -> 311.3 (4 sig figs); 10A = 3113,user_verified
-R034,695ee00b88d7701e561aabc5,defect,unsound,,"UNSURE: I = 4*I0*cos^2(phi/2) = 2*I0 so A is false; R ('always the sum if phase non-zero') is also false, so no option fits; solution contradicts itself. Alternative label: no_error with key D if R is read as true",user_verified
+R034,695ee00b88d7701e561aabc5,defect,unsound,,"I = 4*I0*cos^2(phi/2) = 2*I0 so A is false; R ('always the sum if phase non-zero') is also false, so no option fits; solution contradicts itself",user_verified
 R035,66fe9dbe22132e5a70a3e579,no_error,,D,Student misread 'not antagonistic'; relaxin-inhibin is the non-antagonistic pair = D. Unreported: solution says insulin/glucagon synergistic (false),user_verified
 R036,60ca4feb6420652745f55522,display_issue,,C,All 4 options present in stored HTML; 1.1*0.9 = 0.99 so 99 N = C,user_verified
 R037,68c9ae5afb6b2f16e2d43b1c,display_issue,,D,Slow load; content fine (3.1 - 2.0 = 1.1 V = D),user_verified

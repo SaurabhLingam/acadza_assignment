@@ -1,0 +1,70 @@
+{
+  "run_id": "20261110T181618Z",
+  "reports_requested": 44,
+  "reports_done": 44,
+  "full_run": true,
+  "stopped": null,
+  "total_time_s": 209.2,
+  "total_tokens": {
+    "in": 42135,
+    "out": 20668
+  },
+  "spend_usd": 0.006959,
+  "spend_cap_usd": 0.5,
+  "spend_by_model": {
+    "openrouter:openai/gpt-oss-120b": 0.005657,
+    "openrouter:deepseek/deepseek-v4-flash": 0.001302,
+    "groq:openai/gpt-oss-20b": 0.0,
+    "groq:meta-llama/llama-prompt-guard-2-86m": 0.0,
+    "groq:openai/gpt-oss-120b": 0.0
+  },
+  "calls_per_stage": {
+    "guard": 44,
+    "solve": 78,
+    "extract": 39,
+    "audit": 39,
+    "option_check": 26,
+    "triage": 44,
+    "reply": 44,
+    "value_check": 10,
+    "resolve": 4,
+    "tiebreak": 6
+  },
+  "cases_settled_per_tier": {
+    "option_checks+tiebreak": 6,
+    "solver_2+extract+audit": 6,
+    "code": 18,
+    "triage": 3,
+    "solver_1+guard": 11
+  },
+  "routed_to_faculty": 10,
+  "auto_applied": 17,
+  "shadow_early_exit_disagreements": [],
+  "injection_flags": {
+    "reports": 44,
+    "prompt_guard_flagged": 2,
+    "prompt_guard_flag_rate": 0.045,
+    "regex_flagged": 1,
+    "both_flagged": 1,
+    "guard_only": 1,
+    "regex_only": 0,
+    "guard_unparsed_or_error": 0,
+    "guard_flagged_reports": [
+      "R009",
+      "R027"
+    ]
+  },
+  "calls_by_provider": {
+    "fallback_calls": 27,
+    "groq:meta-llama/llama-prompt-guard-2-86m (cache)": 37,
+    "groq:openai/gpt-oss-120b (cache)": 132,
+    "openrouter:deepseek/deepseek-v4-flash (cache)": 39,
+    "groq:openai/gpt-oss-20b (cache)": 67,
+    "openrouter:openai/gpt-oss-120b (fallback)": 27,
+    "openrouter:deepseek/deepseek-v4-flash": 8,
+    "groq:openai/gpt-oss-20b": 16,
+    "groq:meta-llama/llama-prompt-guard-2-86m": 7,
+    "groq:openai/gpt-oss-120b": 1
+  },
+  "results_file": "logs\\runs\\20261110T181618Z\\results.json"
+}

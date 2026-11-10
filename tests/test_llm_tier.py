@@ -466,3 +466,161 @@ def test_injection_letters_are_not_the_students_answer(tmp_path):
     det = out["detail"]
     assert any("proposed none" in f for f in det["reply_check_failures"])
     assert "your answer" not in out["result"]["student_reply"].lower()
+
+
+# --------------------------------------------------------------------------- third review (D-021, fixes 1-3, reply_v4)
+
+def test_json_validate_failed_retries_without_json_mode(tmp_path):
+    calls, state = [], {"n": 0}
+
+    def answers(b):
+        state["n"] += 1
+        if "response_format" in b:
+            return 400, {}, '{"error":{"code":"json_validate_failed","message":"Failed to validate JSON"}}'
+        return 200, {}, '{"student_reply": "ok"}'
+    c = _client(tmp_path, answers, calls)
+    r = c.call("reply", None, MSG, stage="reply", tier=4)
+    assert r.data == {"student_reply": "ok"} and r.retries == 1
+    # only this call dropped JSON mode: the next call asks for it again
+    c.call("reply", None, MSG + [{"role": "user", "content": "x"}], stage="reply", tier=4)
+    assert state["n"] == 4   # the second call tried JSON mode again (400), then retried without it
+
+
+def test_solver_with_no_matching_option_blocks_key_ok():
+    s = _sig(solvers=[SolverSig("solver_1", "openai", True, issues=("no option fits",)),
+                      SolverSig("solver_2", "deepseek", True, letters=("A",), from_letter=True)])
+    st, _, basis, _, against = resolve_key(s)
+    assert st == UNCLEAR and against >= 1 and any("no option matching" in b for b in basis)
+
+
+def test_reply_must_not_open_with_your_answer_is_wrong():
+    from engine.tiers import check_reply
+    facts = "Correct answer: (A) 0.8\nKey step: F - 100mu = 10 and 2F - 100mu = 100\nStudent's answer: 0.4"
+    assert any("opens by" in f for f in check_reply("Your answer of 0.4 is not correct; it is (A) 0.8.",
+                                                    "no_change", facts=facts, comment="mu should be 0.4"))
+    assert not check_reply("Thanks for checking it carefully. The answer is (A) 0.8, since F - 100mu = 10; "
+                           "0.4 comes from missing that step.", "no_change", facts=facts, comment="mu should be 0.4")
+
+
+def _r007_script(resolve_letter):
+    def script(role, user, model):
+        if role == "guard":
+            return "0.0001"
+        if role == "solver":
+            if "95.5 mH" in user:
+                return json.dumps({"final_expression": "50" if resolve_letter == "C" else "40", "unit": "ohm",
+                                   "chosen_options": [resolve_letter], "missing_information": None})
+            return json.dumps({"final_expression": None, "chosen_options": [],
+                               "missing_information": "the inductance value"})
+        if role == "extract":
+            return json.dumps({"final_expression": "50", "unit": "ohm", "final_statement": "Z = 50 ohm"})
+        if role == "audit":
+            return json.dumps({"values_not_in_question": [{"value": "95.5 mH", "what": "inductance"}],
+                               "contradiction": False, "about_other_question": False})
+        if role == "option_check":
+            return json.dumps({"verdict": "cannot_tell"})
+        if role == "triage":
+            return json.dumps({"verdict": "defect", "repair": "stem_data",
+                               "edit": {"field": "question", "find_clean": "an inductance",
+                                        "replace": "an inductance of 95.5 mH"}})
+        return json.dumps({"student_reply": "Aapne sahi pakda, inductance ki value missing thi. Ab yeh theek hai."})
+    return script
+
+
+def test_e2e_stem_data_auto_applies_only_if_resolve_reproduces_key(tmp_path):
+    out = _run_one(tmp_path / "ok", "R007", _r007_script("C"))
+    res = out["result"]
+    assert (res["verdict"], res["repair"], res["route"]) == ("defect", "stem_data", "auto_apply"), \
+        out["detail"]["route_why"]
+    assert "reproduces the key" in res["evidence"]
+    out2 = _run_one(tmp_path / "bad", "R007", _r007_script("B"))
+    res2, det2 = out2["result"], out2["detail"]
+    assert res2["route"] == "faculty_review" and res2["edit"] is None
+    assert any("D-021" in f for f in det2["edit_guard_failures"])
+
+
+# --------------------------------------------------------------------------- D-022: OpenRouter fallback for Groq
+
+def _fallback_client(tmp_path, groq_answer, calls, cap=0.5, slept=None):
+    """Groq answers via groq_answer(n); OpenRouter always answers 200 with a priced gpt-oss model."""
+    state = {"groq": 0}
+
+    def t(method, url, headers, body, timeout):
+        calls.append((method, url, json.loads(json.dumps(body)) if body else None))
+        if method == "GET":
+            return 200, {}, json.dumps({"data": [
+                {"id": "openai/gpt-oss-120b", "pricing": {"prompt": "0.00000015", "completion": "0.0000006"}},
+                {"id": "openai/gpt-oss-20b", "pricing": {"prompt": "0.00000003", "completion": "0.00000013"}},
+                {"id": "deepseek/deepseek-v4-flash", "pricing": {"prompt": "0.000000091",
+                                                                 "completion": "0.000000182"}}]})
+        if "groq.com" in url:
+            state["groq"] += 1
+            st, hdrs, content = groq_answer(state["groq"])
+            if st != 200:
+                return st, hdrs, content
+            return 200, hdrs, json.dumps({"model": body["model"], "choices": [{"message": {"content": content}}],
+                                          "usage": {"prompt_tokens": 10, "completion_tokens": 5}})
+        return 200, {}, json.dumps({"model": body["model"], "provider": "SomeHost",
+                                    "choices": [{"message": {"content": '{"via": "openrouter"}'}}],
+                                    "usage": {"prompt_tokens": 100, "completion_tokens": 50, "cost": 0.00004}})
+    sleeps = slept if slept is not None else []
+    return Client("test", cap_usd=cap, transport=t, env={}, log_path=tmp_path / "calls.jsonl",
+                  cache_dir=tmp_path / "cache", sleep=sleeps.append)
+
+
+def _log_rows(tmp_path):
+    return [json.loads(x) for x in (tmp_path / "calls.jsonl").read_text(encoding="utf-8").splitlines()]
+
+
+def test_long_groq_rate_limit_falls_back_to_same_model_on_openrouter(tmp_path):
+    calls, slept = [], []
+    c = _fallback_client(tmp_path, lambda n: (429, {"retry-after": "660"}, "daily tokens exhausted"), calls,
+                         slept=slept)
+    r = c.call("triage", None, MSG, stage="triage", tier=4)
+    assert r.data == {"via": "openrouter"} and r.provider == "openrouter" and r.cost_usd == 0.00004
+    assert not [s for s in slept if s > 60]                       # never sat out the 11-minute wait
+    posts = [x for x in calls if x[0] == "POST"]
+    assert "openrouter.ai" in posts[-1][1] and posts[-1][2]["model"] == "openai/gpt-oss-120b"
+    row = _log_rows(tmp_path)[-1]
+    assert row["provider"] == "openrouter" and row["provider_requested"] == "groq" and row["fallback"] is True
+    assert "429" in row["fallback_reason"] and row["model"] == "openai/gpt-oss-120b"
+    # while Groq's limit lasts, the next call for that model goes straight to OpenRouter
+    n_groq = sum("groq.com" in x[1] for x in calls)
+    c.call("audit", None, MSG + [{"role": "user", "content": "2"}], stage="audit", tier=2)
+    assert sum("groq.com" in x[1] for x in calls) == n_groq
+    # the answer is cached under the primary key: a rerun hits the cache and logs who answered
+    c2 = _fallback_client(tmp_path, lambda n: (500, {}, "should not be called"), [])
+    r2 = c2.call("triage", None, MSG, stage="triage", tier=4)
+    assert r2.cache_hit and r2.provider == "openrouter"
+    assert _log_rows(tmp_path)[-1]["provider"] == "openrouter" and _log_rows(tmp_path)[-1]["fallback"] is True
+
+
+def test_short_rate_limits_add_up_to_the_threshold(tmp_path):
+    calls, slept = [], []
+    c = _fallback_client(tmp_path, lambda n: (429, {"retry-after": "40"}, "slow down"), calls, slept=slept)
+    r = c.call("reply", None, MSG, stage="reply", tier=4)
+    assert r.provider == "openrouter" and [x for x in slept if x > 3] == [40.0]           # waited once (40s), not twice (80s)
+    assert [x for x in calls if x[0] == "POST"][-1][2]["model"] == "openai/gpt-oss-20b"
+
+
+def test_short_wait_stays_on_groq(tmp_path):
+    c = _fallback_client(tmp_path, lambda n: (429, {"retry-after": "5"}, "x") if n == 1 else (200, {}, '{"a": 1}'),
+                         [])
+    r = c.call("solver_1", None, MSG, stage="solve", tier=1)
+    assert r.provider == "groq" and r.data == {"a": 1} and r.cost_usd == 0.0
+
+
+def test_fallback_respects_the_spend_cap(tmp_path):
+    calls = []
+    c = _fallback_client(tmp_path, lambda n: (429, {"retry-after": "660"}, "x"), calls, cap=0.000001)
+    with pytest.raises(BudgetExceeded):
+        c.call("triage", None, MSG, stage="triage", tier=4)
+    assert not [x for x in calls if x[0] == "POST" and "openrouter.ai" in x[1]]
+
+
+def test_guard_has_no_fallback(tmp_path):
+    slept = []
+    c = _fallback_client(tmp_path, lambda n: (429, {"retry-after": "90"}, "x") if n == 1 else (200, {}, "0.001"),
+                         [], slept=slept)
+    r = c.call("guard", None, MSG, stage="guard", tier=1, json_mode=False, temperature=None)
+    assert r.provider == "groq" and [x for x in slept if x > 3] == [90.0]

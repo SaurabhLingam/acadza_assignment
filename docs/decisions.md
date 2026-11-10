@@ -158,6 +158,7 @@ Each entry: **Decision**, **Alternatives considered**, **Why**, **Evidence**. Ne
 - **Evidence:** Offline test: the injection report gets no_change with the guard flag set, and the solver input never contains the comment.
 
 ## D-018: No paid fallback when Groq rate-limits
+- **Status:** Amended by D-022 (fallback to the same model on OpenRouter after 60 s of rate limiting).
 - **Date:** 2026-11-10
 - **Decision:** When Groq returns 429 or its rate-limit headers say the quota is spent, the client waits (`retry-after`, `x-ratelimit-reset-*`, else exponential backoff) and retries. It never re-sends the call to a paid OpenRouter model.
 - **Alternatives considered:** Fall back to `openai/gpt-oss-120b` on OpenRouter ($0.15 / $0.60 per million tokens), which would raise the worst case of a full run to about $0.40.
@@ -177,3 +178,17 @@ Each entry: **Decision**, **Alternatives considered**, **Why**, **Evidence**. Ne
 - **Alternatives considered:** Auto-apply when the proposed content matches any one solver (what the 6-report test did for R011, where only one solver gave a usable value and the evidence wrongly said "both solvers"); always send option content to faculty.
 - **Why:** The content of a blank option is new text that students will see, so it needs the same independent agreement as a key change. The stored solution was written by a teacher, so it is a genuine independent source.
 - **Evidence:** R011 in the first 6-report test (`logs/runs/20261110T161819Z/`). In code: the blind solvers (one per model family) and the stored solution's final value are compared with the proposed content within the option tolerance; fewer than two agreeing sources sends the case to faculty, and the evidence lists the agreeing sources.
+
+## D-021: stem_data auto-applies only if a re-solve with the inserted value reproduces the key
+- **Date:** 2026-11-10
+- **Decision:** stem_data only auto-applies if a re-solve with the inserted value reproduces the keyed answer. Otherwise faculty_review. Same principle as D-020: two independent sources must agree before content goes into a question.
+- **Alternatives considered:** Auto-apply whenever the stored solution states the missing value and the blind solvers report it missing (what the 12-report test did for R007, where code never checked that the inserted value gives the key); always send stem_data to faculty.
+- **Why:** The stored solution is one source for the inserted value; a blind re-solve of the edited question that lands on the keyed answer is the second, independent one.
+- **Evidence:** R007 in run `20261110T172651Z`: 95.5 mH was inserted from the solution without a check (it is right: X_L = 30 Ω, Z = 50 Ω = (C)). In code (`engine/run.py`, `_resolve_check`): both solver families re-solve the edited stem blind; every re-solve that needs no assumption must reproduce the key, and at least one must exist; the evidence lists the re-solves.
+
+## D-022: Amends D-018: fall back to the same model on OpenRouter when Groq is rate-limited for more than 60 s
+- **Date:** 2026-11-10
+- **Decision:** amend D-018. When Groq is rate-limited for more than 60 s, fall back to the same model on OpenRouter (openai/gpt-oss-120b, and gpt-oss-20b for the small jobs), still under the per-run spend cap. Same model, so solver independence is unaffected.
+- **Alternatives considered:** D-018 as it stood (wait out every limit, never pay); letting the run degrade (calls fail after 4 retries and the reports go to faculty); a different model as fallback (would change model families and could break solver independence).
+- **Why:** Groq's daily token limit is the bottleneck, and degraded reports must not reach results.json. The fallback keeps the same model, so the two solver families stay distinct (deepseek stays on its own role).
+- **Evidence:** the full run stalled at report 35 with an 11-minute wait on triage after Groq's daily token limit ran out. Implementation (`engine/llm.py`, `config.FALLBACKS`, `FALLBACK_AFTER_S = 60`): the fallback triggers when a 429 `retry-after`, the rate-limit headers, or the waiting already done on the call would exceed 60 s; while Groq's limit lasts, later calls for that model go straight to OpenRouter; the spend cap is checked before every fallback call; every log line records the provider and model that answered (`provider`, `model`, `provider_requested`, `fallback`, `fallback_reason`); answers are cached under the role's primary key, so finished reports are never redone. The guard model has no OpenRouter equivalent and keeps waiting.

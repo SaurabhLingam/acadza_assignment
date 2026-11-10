@@ -85,10 +85,15 @@ def run_guard(client: Client, report_id: str, comment: str) -> dict:
             "model_answered": r.model_answered}
 
 
-def run_solver(client: Client, role: str, pq: ParsedQuestion) -> tuple[SolverSig, dict]:
+def run_solver(client: Client, role: str, pq: ParsedQuestion, stem_text: str | None = None) -> tuple[SolverSig, dict]:
+    """Blind solve. `stem_text` replaces the stem for a re-solve of an edited question (D-021)."""
     p = prompt_for(role)
-    msgs = p.render(question_type=pq.q.qtype, question_text=pq.split.stem_text, options_block=options_block(pq))
-    r = client.call(role, p, msgs, stage="solve", tier=1 if role == "solver_1" else 2, subject=pq.q.id)
+    resolve = stem_text is not None
+    msgs = p.render(question_type=pq.q.qtype, question_text=stem_text if resolve else pq.split.stem_text,
+                    options_block=options_block(pq))
+    r = client.call(role, p, msgs, stage="resolve" if resolve else "solve",
+                    tier=4 if resolve else (1 if role == "solver_1" else 2),
+                    subject=f"{pq.q.id}:resolve" if resolve else pq.q.id)
     d = r.data or {}
     sig = SolverSig(role=role, family=family(role), ok=bool(r.data), missing=_missing(d.get("missing_information")),
                     issues=tuple(d.get("question_issues") or ()), unit=str(d.get("unit") or ""))
@@ -247,7 +252,7 @@ _NUM = re.compile(r"(?<![\w.])\d+(?:\.\d+)?")
 _HINGLISH_MARKERS = {"hai", "nahi", "nhi", "kyu", "kyun", "kyunki", "chahiye", "galat", "mein", "ki", "ka", "ke",
                      "toh", "kya", "raha", "rha", "diya", "hona", "lekin", "bhi", "aapka", "aapne", "sahi", "tha",
                      "thi", "hain", "karo", "karein", "dhyan", "hoga", "lagta", "liye", "abhi", "yeh", "ye", "woh"}
-_YOUR_ANSWER_WRONG = re.compile(r"\b(?:your|aapka|tumhara)\s+(?:answer|ans|attempt|jawab)\b[^.!?]*"
+_YOUR_ANSWER_WRONG = re.compile(r"\b(?:your|aapka|tumhara)\s+(?:answer|ans|attempt|jawab)\b(?:[^.!?]|\.(?=\d))*"
                                 r"\b(?:not|wrong|incorrect|galat|nahi)\b", re.I)
 _CORRECT_IS = re.compile(r"\bcorrect\s+(?:answer|option)\s+(?:is|hai)\s*\(?([A-E])\b(?!\w)", re.I)
 
@@ -284,6 +289,10 @@ def check_reply(text: str, route: str, syllabus: bool = False, *, language: str 
             fails.append("reply should be in Hinglish")
     if not proposed_answer and _YOUR_ANSWER_WRONG.search(text or ""):
         fails.append("says the student's answer was wrong, but they proposed none")
+    first = re.split(r"(?<=[.!?;])\s+", (text or "").strip(), maxsplit=1)[0]
+    if _YOUR_ANSWER_WRONG.match(first.strip()) or re.match(r"\s*(?:that'?s|this is|it'?s)\s+(?:not\s+correct|wrong|"
+                                                               r"incorrect)", first, re.I):
+        fails.append("opens by telling the student their answer is wrong")
     sentences = [x for x in re.split(r"(?<=[.!?])\s+", (text or "").strip()) if x]
     if not text or not text.strip():
         fails.append("empty")

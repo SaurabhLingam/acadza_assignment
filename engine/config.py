@@ -28,12 +28,20 @@ ROLES = {
     "value_check":  ("groq", "openai/gpt-oss-120b", "value_check", 1, 4000),       # integerQuestion
     "value_tiebreak": ("openrouter", "deepseek/deepseek-v4-flash", "value_check", 1, 6000),
     "triage":       ("groq", "openai/gpt-oss-120b", "triage", 2, 4000),
-    "reply":        ("groq", "openai/gpt-oss-20b", "reply", 3, 600),
+    "reply":        ("groq", "openai/gpt-oss-20b", "reply", 4, 600),
 }
 
 # Families, so code can check that "independent" signals really are independent.
 FAMILY = {"openai/gpt-oss-120b": "openai", "openai/gpt-oss-20b": "openai",
           "deepseek/deepseek-v4-flash": "deepseek", "meta-llama/llama-prompt-guard-2-86m": "meta"}
+
+# D-022 (amends D-018): when Groq is rate-limited for more than FALLBACK_AFTER_S, the same model is called
+# on OpenRouter instead, still under the per-run spend cap. Same model, so solver independence is unaffected.
+FALLBACKS = {
+    ("groq", "openai/gpt-oss-120b"): ("openrouter", "openai/gpt-oss-120b"),
+    ("groq", "openai/gpt-oss-20b"): ("openrouter", "openai/gpt-oss-20b"),
+}
+FALLBACK_AFTER_S = 60
 
 DEFAULT_SPEND_CAP_USD = 0.50
 MAX_RETRIES = 4

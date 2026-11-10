@@ -303,3 +303,105 @@ session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
 <summary>Background command "PYTHONIOENCODING=utf-8 python -m engine.run --reports R004,R011,R016,R027,R029,R034,R005,R020,R021,R007,R001,R039 --cap 0.50 &gt; /c/Users/saura/AppData/Local/Temp/claude/ebefd33da09cf696/3fa27d9c-9c89-4801-bd05-2c41bbce6651/scratchpad/run2.log 2&gt;&amp;1" completed (exit code 0)</summary>
 </task-notification>
 ```
+
+---
+
+### 2026-11-10T23:09:08+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+
+
+<pasted_content id="5d75">
+decision: stem_data only auto-applies if a re-solve with the inserted value reproduces the keyed answer. Otherwise faculty_review. Same principle as D-020: two independent sources must agree before content goes into a question.
+
+Go ahead with fixes 1–3 and the R007 re-solve check. Also:
+- reply tone: never open with "your answer is not correct". Start by acknowledging their effort or with the right answer, then the key step. reply_v4 with a CHANGELOG entry.
+- remove the stale "UNSURE" note on R034 in eval-labels.csv (verified).
+
+Then rerun the 12 to confirm nothing regressed. If all 12 still match, do the full run on all 44 reports and write results.json at the repo root. Score it with eval/evaluate_run.py, and also list: every auto_apply with its edit, every reply that fell back to a template, and the shadow-mode disagreements. Commit and push.
+</pasted_content id="5d75">
+
+```
+
+---
+
+### 2026-11-10T23:12:41+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+<task-notification>
+<task-id>b1mvk81ah</task-id>
+<tool-use-id>toolu_01B3RQG81Z2VWTdUi1F4KfgW</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\3fa27d9c-9c89-4801-bd05-2c41bbce6651\tasks\b1mvk81ah.output</output-file>
+<status>completed</status>
+<summary>Background command "PYTHONIOENCODING=utf-8 python -m engine.run --reports R004,R011,R016,R027,R029,R034,R005,R020,R021,R007,R001,R039 --cap 0.50 &gt; /c/Users/saura/AppData/Local/Temp/claude/ebefd33da09cf696/3fa27d9c-9c89-4801-bd05-2c41bbce6651/scratchpad/run3.log 2&gt;&amp;1" completed (exit code 0)</summary>
+</task-notification>
+```
+
+---
+
+### 2026-11-10T23:25:02+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+ETA?
+```
+
+---
+
+### 2026-11-10T23:32:44+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+done?
+```
+
+---
+
+### 2026-11-10T23:41:46+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+how much more time?
+```
+
+---
+
+### 2026-11-10T23:43:28+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+
+
+<pasted_content id="5d75">
+Stop the run. Groq's daily limit is the bottleneck and I don't want degraded reports in results.json.
+
+decision: amend D-018. When Groq is rate-limited for more than 60 s, fall back to the same model on OpenRouter (openai/gpt-oss-120b, and gpt-oss-20b for the small jobs), still under the per-run spend cap. Same model, so solver independence is unaffected. Evidence: the full run stalled at report 35 with an 11-minute wait on triage after Groq's daily token limit ran out.
+
+Implement that, log which provider actually answered each call, and keep the cache working so the 35 finished reports aren't redone. Then resume the full run, score it, and report as planned: score vs eval-labels, every auto_apply with its edit, template fallbacks, shadow-mode disagreements, total cost. Commit and push.
+</pasted_content id="5d75">
+
+```
+
+---
+
+### 2026-11-10T23:49:47+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+<task-notification>
+<task-id>bxsco1xdy</task-id>
+<tool-use-id>toolu_01UDr4hFNSmCyzFFFETh6yq9</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\3fa27d9c-9c89-4801-bd05-2c41bbce6651\tasks\bxsco1xdy.output</output-file>
+<status>completed</status>
+<summary>Background command "PYTHONIOENCODING=utf-8 python -u -m engine.run --cap 0.50 &gt; /c/Users/saura/AppData/Local/Temp/claude/ebefd33da09cf696/3fa27d9c-9c89-4801-bd05-2c41bbce6651/scratchpad/run_full2.log 2&gt;&amp;1" completed (exit code 0)</summary>
+</task-notification>
+```
