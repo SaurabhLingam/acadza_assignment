@@ -95,6 +95,7 @@ def run_solver(client: Client, role: str, pq: ParsedQuestion) -> tuple[SolverSig
     if not r.data:
         sig.error = "no valid JSON"
         return sig, d
+    sig.working = str(d.get("working") or "")[:300]
     sig.value = _value(d.get("final_expression"))
     if d.get("final_expression") not in (None, "", "null") and sig.value is None:
         sig.error = f"unevaluable expression: {str(d.get('final_expression'))[:60]}"
@@ -117,7 +118,9 @@ def run_solver(client: Client, role: str, pq: ParsedQuestion) -> tuple[SolverSig
                 sig.issues = sig.issues + (f"chosen {chosen} but value {sig.value:g} {sig.unit} matches no option; "
                                            "code ignores the pick",)
         else:
+            # no usable expression (or statement options): the picked letter is this solver's answer
             sig.letters = chosen
+            sig.from_letter = bool(chosen) and sig.value is None
     return sig, d
 
 
@@ -238,10 +241,49 @@ _CLAIMS_FIX = re.compile(r"\b(fixed|corrected|updated|changed|ho gaya|kar diya)\
 _REMOVED = re.compile(r"\b(remov\w*|delet\w*|hidden|hide|taken down|hata\w*)\b", re.I)
 
 
-def check_reply(text: str, route: str, syllabus: bool = False) -> list[str]:
+_LETTER_PATS = [re.compile(r"\(([A-E])\)"), re.compile(r"\boption\s+([A-E])\b", re.I),
+                re.compile(r"\banswer\s+(?:is\s+|hai\s+)?\(?([A-E])\b(?!\w)")]
+_NUM = re.compile(r"(?<![\w.])\d+(?:\.\d+)?")
+_HINGLISH_MARKERS = {"hai", "nahi", "nhi", "kyu", "kyun", "kyunki", "chahiye", "galat", "mein", "ki", "ka", "ke",
+                     "toh", "kya", "raha", "rha", "diya", "hona", "lekin", "bhi", "aapka", "aapne", "sahi", "tha",
+                     "thi", "hain", "karo", "karein", "dhyan", "hoga", "lagta", "liye", "abhi", "yeh", "ye", "woh"}
+_YOUR_ANSWER_WRONG = re.compile(r"\b(?:your|aapka|tumhara)\s+(?:answer|ans|attempt|jawab)\b[^.!?]*"
+                                r"\b(?:not|wrong|incorrect|galat|nahi)\b", re.I)
+_CORRECT_IS = re.compile(r"\bcorrect\s+(?:answer|option)\s+(?:is|hai)\s*\(?([A-E])\b(?!\w)", re.I)
+
+
+def _letters(text: str) -> set:
+    return {m.group(1).upper() for p in _LETTER_PATS for m in p.finditer(text or "")}
+
+
+def _numbers(text: str) -> list[float]:
+    return [float(x) for x in _NUM.findall(text or "")]
+
+
+def check_reply(text: str, route: str, syllabus: bool = False, *, language: str = "english", facts: str = "",
+                comment: str = "", proposed_answer: bool = True) -> list[str]:
+    """Code checks on the student reply. Any failure -> the caller uses a code-built template instead."""
     fails = []
     if syllabus and _REMOVED.search(text or ""):
         fails.append("syllabus reply mentions removal (the question stays live)")
+    if facts:
+        extra = _letters(text) - _letters(facts)
+        if extra:
+            fails.append(f"names option(s) {sorted(extra)} not in the facts")
+        allowed = _numbers(facts) + _numbers(comment)
+        stray = [n for n in _numbers(text) if not any(abs(n - a) <= 1e-9 * max(1.0, abs(a)) for a in allowed)]
+        if stray:
+            fails.append(f"states value(s) {stray[:3]} not in the facts")
+        correct = {m.group(1).upper() for m in re.finditer(r"Correct answer: \(([A-E])\)", facts)}
+        wrong = {m.group(1).upper() for m in _CORRECT_IS.finditer(text or "")} - correct
+        if wrong:
+            fails.append(f"calls {sorted(wrong)} correct, which the facts do not")
+    if language == "hinglish":
+        words = set(re.findall(r"[a-z]+", (text or "").lower()))
+        if len(words & _HINGLISH_MARKERS) < 2:
+            fails.append("reply should be in Hinglish")
+    if not proposed_answer and _YOUR_ANSWER_WRONG.search(text or ""):
+        fails.append("says the student's answer was wrong, but they proposed none")
     sentences = [x for x in re.split(r"(?<=[.!?])\s+", (text or "").strip()) if x]
     if not text or not text.strip():
         fails.append("empty")
@@ -256,13 +298,14 @@ def check_reply(text: str, route: str, syllabus: bool = False) -> list[str]:
 
 
 def run_reply(client: Client, report, language: str, verdict: str, route: str, facts: str,
-              syllabus: bool = False) -> tuple[str, list]:
+              syllabus: bool = False, proposed_answer: bool = True) -> tuple[str, list]:
     p = prompt_for("reply")
     msgs = p.render(comment=report.comment or "(empty)", language=language, verdict=verdict, route=route,
                     outcome_facts=facts)
     r = client.call("reply", p, msgs, stage="reply", tier=4, subject=report.report_id, temperature=0.3)
     text = str((r.data or {}).get("student_reply") or "").strip()
-    return text, check_reply(text, route, syllabus)
+    return text, check_reply(text, route, syllabus, language=language, facts=facts, comment=report.comment or "",
+                             proposed_answer=proposed_answer)
 
 
 def findings_text(findings) -> str:

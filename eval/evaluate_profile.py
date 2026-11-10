@@ -22,8 +22,9 @@ OUT = ROOT / "logs" / "profile" / "eval.md"
 
 
 def _read(path: Path) -> list[dict]:
+    """CSV rows; lines starting with '#' (the provenance note at the top of eval-labels.csv) are skipped."""
     with open(path, "r", encoding="utf-8", newline="") as fh:
-        return list(csv.DictReader(fh))
+        return list(csv.DictReader(line for line in fh if not line.startswith("#")))
 
 
 def main() -> str:

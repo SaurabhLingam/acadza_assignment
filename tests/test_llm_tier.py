@@ -373,3 +373,96 @@ def test_e2e_integer_wrong_key_via_value_checks_and_code_evidence(tmp_path):
     assert "Value checks" in res["evidence"] and f"Key: {key}" in res["evidence"]
     assert "TRIAGE-SAYS" not in res["evidence"]          # code decided: triage evidence not used
     assert det["option_checks"]["key"][0]["verdict"] == "incorrect"
+
+
+# --------------------------------------------------------------------------- second review (M-003, D-020)
+
+def test_reply_check_rejects_invented_answer_wrong_language_and_blame():
+    from engine.tiers import check_reply
+    unsound_facts = ("No option is correct as written, so there is no right option to tell the student.\n"
+                     "The student did not propose an answer of their own; do not say their answer was wrong.")
+    assert any("not in the facts" in f for f in check_reply(
+        "Thanks for spotting the mistake. The correct answer is B.", "faculty_review", facts=unsound_facts))
+    facts = "Correct answer: (A) 0.8\nKey step: F - 100mu = 10 and 2F - 100mu = 100"
+    assert check_reply("We re-solved it: the answer is (A) 0.8, since F - 100mu = 10.", "no_change",
+                       facts=facts, comment="mu should be 0.4") == []
+    assert any("not in the facts" in f for f in check_reply("The answer is (A) 0.75.", "no_change", facts=facts))
+    assert any("Hinglish" in f for f in check_reply("The answer is (A) 0.8.", "no_change", language="hinglish",
+                                                    facts=facts))
+    assert not check_reply("Sahi answer (A) 0.8 hai, kyunki F - 100mu = 10 lagta hai.", "no_change",
+                           language="hinglish", facts=facts)
+    assert any("proposed none" in f for f in check_reply("Your answer was not correct. It is (A) 0.8.", "no_change",
+                                                         facts=facts, proposed_answer=False))
+
+
+def test_option_content_needs_two_sources():
+    from engine.decide import Decision
+    from engine.run import Runner
+    one = _sig(solvers=[SolverSig("solver_1", "openai", True), _isv("solver_2", "deepseek", 1.0)],
+               extract={"value": None})
+    d = Decision("defect", "option_repair", "", 0.5, "code+llm", False)
+    assert Runner._content_sources(d, one, "1:1") is False and "only 1" in d.notes[0]
+    two = _sig(solvers=[_isv("solver_1", "openai", 1.0), _isv("solver_2", "deepseek", 1.0)], extract={"value": None})
+    d2 = Decision("defect", "option_repair", "", 0.5, "code+llm", False)
+    assert Runner._content_sources(d2, two, "1:1") is True
+    assert "gpt-oss-120b" in d2.notes[0] and "deepseek-v4-flash" in d2.notes[0]
+    sol = _sig(solvers=[_isv("solver_1", "openai", 1.0), SolverSig("solver_2", "deepseek", True)],
+               extract={"value": 1.0, "unit": ""})
+    d3 = Decision("defect", "option_repair", "", 0.5, "code+llm", False)
+    assert Runner._content_sources(d3, sol, "1:1") is True and "stored solution" in d3.notes[0]
+
+
+def test_solver_letter_used_when_expression_null(tmp_path):
+    from engine.tiers import run_solver
+    pq = _pq("Which is true?<br/>(A) x<br/>(B) y<br/>(C) z<br/>(D) w")
+    c = _client(tmp_path, lambda b: (200, {}, json.dumps({"final_expression": None, "chosen_options": ["C"],
+                                                           "working": "w"})), [])
+    sig, _ = run_solver(c, "solver_1", pq)
+    assert sig.letters == ("C",) and sig.from_letter and sig.working == "w"
+
+
+def _r016_script(edit):
+    def script(role, user, model):
+        if role == "guard":
+            return "0.0001"
+        if role == "solver":
+            return json.dumps({"final_expression": "20", "unit": "cm", "working": "800 = 2a^2 so a = 20 cm",
+                               "missing_information": None})
+        if role == "extract":
+            return json.dumps({"final_expression": "40", "unit": "cm", "final_statement": "a = 40 cm"})
+        if role == "audit":
+            return json.dumps({"values_not_in_question": [], "contradiction": False, "about_other_question": False})
+        if role == "value_check":
+            return json.dumps({"reason": "r", "verdict": "correct"})
+        if role == "triage":
+            return json.dumps({"verdict": "defect", "repair": "solution_fix", "edit": edit, "evidence": "e"})
+        return json.dumps({"student_reply": "Thanks! The answer is 20 cm; 800 = 2a^2 so a = 20 cm. The fix is live."})
+    return script
+
+
+def test_e2e_solution_value_fix_auto_applies_and_keeps_markup(tmp_path):
+    out = _run_one(tmp_path, "R016", _r016_script({"field": "solution", "find_clean": "a = 40 cm",
+                                                   "replace": "a = 20 cm"}))
+    res, det = out["result"], out["detail"]
+    assert (res["verdict"], res["repair"], res["route"]) == ("defect", "solution_fix", "auto_apply"), det["route_why"]
+    assert res["edit"]["field"] == "solution" and "40" in res["edit"]["find"]
+    assert res["edit"]["replace"] == res["edit"]["find"].replace("40", "20")
+    assert "changes only the final value 40 -> 20" in res["evidence"]
+
+
+def test_e2e_solution_edit_that_changes_more_goes_to_faculty(tmp_path):
+    out = _run_one(tmp_path, "R016", _r016_script({"field": "solution", "find_clean": "a = 40 cm",
+                                                   "replace": "side = 20 cm"}))
+    res, det = out["result"], out["detail"]
+    assert res["route"] == "faculty_review" and res["edit"] is None
+    assert any("more than the value" in f for f in det["edit_guard_failures"])
+
+
+def test_injection_letters_are_not_the_students_answer(tmp_path):
+    out = _run_one(tmp_path, "R027", lambda role, user, model: (
+        "0.999" if role == "guard" else json.dumps({"student_reply": "Your answer was not correct; it is (A)."})
+        if role == "reply" else json.dumps({"final_expression": "5.7e-5", "unit": "/°C", "chosen_options": ["A"],
+                                           "verdict": "correct" if "(A)" in user else "incorrect"})))
+    det = out["detail"]
+    assert any("proposed none" in f for f in det["reply_check_failures"])
+    assert "your answer" not in out["result"]["student_reply"].lower()

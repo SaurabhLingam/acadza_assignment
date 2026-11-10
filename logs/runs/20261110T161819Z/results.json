@@ -1,0 +1,76 @@
+[
+  {
+    "reportId": "R004",
+    "questionId": "68e870ef42c06737d6e565c4",
+    "verdict": "defect",
+    "repair": "answer_key",
+    "edit": {
+      "field": "answer",
+      "find": "A",
+      "replace": "D"
+    },
+    "route": "auto_apply",
+    "confidence": 0.97,
+    "evidence": "Key: (A) 4556 N/m^2. gpt-oss-120b (blind solve): 4800 N/m^2 = (D). deepseek-v4-flash (blind solve): 4800 N/m^2 = (D). Stored solution (gpt-oss-20b) ends at 4800 N/m^2 = (D). Option checks: (A) incorrect [gpt-oss-120b]; (D) correct [gpt-oss-120b]",
+    "student_reply": "Thank you for spotting the mistake. The correct answer is 4800 N/m^2, not 8225; the key step is to correctly apply the formula for pressure."
+  },
+  {
+    "reportId": "R011",
+    "questionId": "68e872546e45ba37dcc16bc0",
+    "verdict": "defect",
+    "repair": "option_repair",
+    "edit": {
+      "field": "question",
+      "find": "(C) <br />",
+      "replace": "(C) 1:1 <br />"
+    },
+    "route": "auto_apply",
+    "confidence": 0.74,
+    "evidence": "Key: (C). gpt-oss-120b (blind solve): no option. deepseek-v4-flash (blind solve): 1 = no option. Stored solution (gpt-oss-20b) ends at The forces are equal and opposite.. Triage (gpt-oss-120b): Option C is blank (definite) and the solution shows the forces are equal, implying a ratio of 1:1.",
+    "student_reply": "Thanks for pointing that out. The correct answer is indeed C, so mark C. The fix is live now."
+  },
+  {
+    "reportId": "R016",
+    "questionId": "6263d75bdd44e265ef926d97",
+    "verdict": "defect",
+    "repair": "solution_fix",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.97,
+    "evidence": "Key: 20 cm. gpt-oss-120b (blind solve): 20 cm. deepseek-v4-flash (blind solve): 20 cm. Stored solution (gpt-oss-20b) ends at 40 cm. Value checks: key value correct [gpt-oss-120b]. Sent to faculty: no edit that passes the guards",
+    "student_reply": "Thank you for spotting the mistake; the correct answer is 20 cm, not 40 cm. A teacher will review this and update the solution."
+  },
+  {
+    "reportId": "R027",
+    "questionId": "6062ec84518e9535e120c422",
+    "verdict": "no_error",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.86,
+    "evidence": "Key: (A) 5.7 x 10^-5/°C. gpt-oss-120b (blind solve): (A). deepseek-v4-flash (blind solve): 5.7e-05 /°C = (A). Stored solution (gpt-oss-20b) ends at (A). Option checks: (A) correct [gpt-oss-120b]; (C) incorrect [gpt-oss-120b]",
+    "student_reply": "Your answer was not correct. The correct answer is (A) 5.7 x 10^-5/°C; remember to use ΔL = α L0 ΔT to find α."
+  },
+  {
+    "reportId": "R029",
+    "questionId": "68e8734442c06737d6e56da4",
+    "verdict": "no_error",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.86,
+    "evidence": "Key: (A) 0.8. gpt-oss-120b (blind solve): 0.8 = (A). deepseek-v4-flash (blind solve): 0.8 = (A). Stored solution (gpt-oss-20b) ends at (A). Option checks: (A) correct [gpt-oss-120b]",
+    "student_reply": "Your answer of 0.4 is not correct. The correct value is 0.8. Double-check the formula for mu; it should give 0.8."
+  },
+  {
+    "reportId": "R034",
+    "questionId": "695ee00b88d7701e561aabc5",
+    "verdict": "defect",
+    "repair": "unsound",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.97,
+    "evidence": "Key: (D) A is false, but R is true.. gpt-oss-120b (blind solve): no option. deepseek-v4-flash (blind solve): no option. Stored solution (gpt-oss-20b) ends at (D). Option checks: (D) incorrect [gpt-oss-120b]; (A) incorrect [gpt-oss-120b]; (B) incorrect [gpt-oss-120b]; (C) incorrect [gpt-oss-120b]. Audit (gpt-oss-120b): solution contradicts itself: Assertion (A) is false because ... Thus, the intensity is equal to the intensity of one wave. Theref. Sent to faculty: repair is faculty-only (auto: false)",
+    "student_reply": "Thanks for spotting the mistake. The correct answer is B, because the intensity remains unchanged only if the assertion holds true."
+  }
+]

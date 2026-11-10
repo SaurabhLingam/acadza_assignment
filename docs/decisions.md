@@ -170,3 +170,10 @@ Each entry: **Decision**, **Alternatives considered**, **Why**, **Evidence**. Ne
 - **Alternatives considered:** Show the model raw HTML and let it write the raw `find` itself.
 - **Why:** Models copy raw production HTML badly (nested unclosed spans, entities, MathML). Mapping in code means a `find` is never invented, and a failed mapping just leaves the edit for faculty.
 - **Evidence:** `tests/test_parse.py::test_locate_raw_across_tags`; guard tests in `tests/test_llm_tier.py`. Real mapping rate pending the 6-report test.
+
+## D-020: option_repair auto-applies only when two independent sources agree on the missing content
+- **Date:** 2026-11-10
+- **Decision:** option_repair can auto-apply when two independent sources agree on the missing content, and the stored solution counts as one source. The evidence must say exactly which sources agreed.
+- **Alternatives considered:** Auto-apply when the proposed content matches any one solver (what the 6-report test did for R011, where only one solver gave a usable value and the evidence wrongly said "both solvers"); always send option content to faculty.
+- **Why:** The content of a blank option is new text that students will see, so it needs the same independent agreement as a key change. The stored solution was written by a teacher, so it is a genuine independent source.
+- **Evidence:** R011 in the first 6-report test (`logs/runs/20261110T161819Z/`). In code: the blind solvers (one per model family) and the stored solution's final value are compared with the proposed content within the option tolerance; fewer than two agreeing sources sends the case to faculty, and the evidence lists the agreeing sources.

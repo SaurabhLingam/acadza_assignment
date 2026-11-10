@@ -42,6 +42,8 @@ class SolverSig:
     missing: str | None = None
     issues: tuple = ()
     error: str = ""
+    working: str = ""                   # the solver's own key steps (used as the reply's key step)
+    from_letter: bool = False           # no expression given; the picked letter is this solver's answer
 
 
 @dataclass
@@ -96,6 +98,7 @@ class Decision:
     needs_triage: str = ""              # what triage must decide ("" = nothing)
     allowed_repairs: tuple = ()         # when triage chooses the repair
     key_status: str = ""
+    notes: list = field(default_factory=list)   # extra code-built evidence (e.g. which sources agreed)
 
 
 # --------------------------------------------------------------------------

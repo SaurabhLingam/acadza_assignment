@@ -11,18 +11,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import time
 from datetime import datetime, timezone
 
 from . import config
 from .checks import DEFINITE, SIGNAL, build_vocab, parse_question, run_checks
 from .claims import classify
-from .decide import (KEY_OK, KEY_WRONG, TIER_NAMES, TIER_TRIAGE, OptionVerdict, Signals, confidence, decide,
-                     disputed_items, route_for, same_value, triage_contradicts, value_cand, value_clusters)
-from .edits import code_edit, guard, map_clean_edit, public_edit
+from .decide import (KEY_OK, KEY_WRONG, TIER_NAMES, TIER_TRIAGE, UNSOUND, OptionVerdict, Signals, confidence,
+                     counts, decide, disputed_items, route_for, same_value, triage_contradicts, value_cand,
+                     value_clusters)
+from .edits import code_edit, guard, map_clean_edit, public_edit, value_correction_check
 from .llm import BudgetExceeded, Client, LLMError
 from .loader import ROOT, load_questions, load_reports, load_taxonomy
-from .mathexpr import parse_quantity, same_quantity
+from .mathexpr import parse_quantity, same_quantity, to_si
 from .tiers import (asked_unit, findings_text, integer_match, run_audit, run_extract, run_guard,
                     run_option_check, run_reply, run_solver, run_triage, run_value_check)
 from .verify import decide as decide_tier0
@@ -75,7 +77,7 @@ class Runner:
         # tier 4: triage sees everything; code decides first and tells triage what is left
         d_code = decide(s, self.tax, upto=TIER_TRIAGE - 1)
         code_edits = self._code_edit_preview(d_code, pq, findings, claim)
-        task = self._task(d_code, code_edits)
+        task = self._task(d_code, code_edits, self._value_fix(d_code, s, pq))
         s.triage = self.once(("triage", r.report_id), lambda: run_triage(
             self.c, pq, r, task, self.tax, self._signals_text(s, pq, code_edits)), lambda e: None)
         d = decide(s, self.tax)
@@ -83,23 +85,27 @@ class Runner:
         if contradicted:
             d.against += 1
             d.basis.append("triage disagrees with the code decision")
-        # option content proposed by triage must agree with the solvers' value
+        # D-020: option content needs two independent sources agreeing (the stored solution counts as one)
+        content_sources_ok = None
         if d.repair == "option_repair" and s.triage and s.triage.get("option_content"):
-            q = parse_quantity(str(s.triage["option_content"]))
-            vals = [sv for sv in s.solvers if sv.ok and sv.value is not None]
-            if q and vals:
-                if all(same_quantity(q[0], q[1], sv.value, sv.unit, config.OPTION_REL_TOL) for sv in vals):
-                    d.agree += len(vals)
-                    d.basis.append(f"proposed option content {s.triage['option_content']} matches both solvers")
-                else:
-                    d.against += 1
-                    d.basis.append("proposed option content does not match the solvers")
+            content_sources_ok = self._content_sources(d, s, str(s.triage["option_content"]))
+        elif d.repair == "option_repair":
+            content_sources_ok = False
+            d.notes.append("No content proposed for the blank option")
         # edit, guards, route, confidence
         edit, how, fails = self._edit(d, pq, findings, claim, s)
         strong = (d.complete and d.against == 0) or (d.decided_by in ("triage", "code+llm") and d.agree >= 1
                                                      and d.against == 0)
+        if content_sources_ok is False:
+            strong = False
         route, why = route_for(d.verdict, d.repair, self.tax, strong=strong, edit_ok=bool(edit) and not fails,
                                injection=s.injection, contradicted=contradicted)
+        if fails and fails != ["no edit"]:
+            why = [("no edit that passes the guards: " + "; ".join(fails)) if w == "no edit that passes the guards"
+                   else w for w in why]
+        if content_sources_ok is False and route == "faculty_review":
+            why = [w for w in why if w != "evidence does not meet the auto-apply bar"] + [
+                "fewer than two independent sources agree on the missing option content (D-020)"]
         if d.verdict is None:
             route, why = "faculty_review", ["no verdict could be decided"]
         conf = confidence(d.agree, d.against, definite=(d.decided_by == "code" and t0.outcome != "needs_llm"))
@@ -214,6 +220,62 @@ class Runner:
                     self.c, "value_tiebreak", pq, c, t),
                     lambda e: OptionVerdict("value_tiebreak", "", "cannot_tell", e[:80])))
 
+    @staticmethod
+    def _content_sources(d, s: Signals, content: str) -> bool:
+        """D-020: which independent sources give the same value as the proposed option content."""
+        q = parse_quantity(content)
+        agreeing, fams = [], set()
+        if q:
+            for sv in s.solvers:
+                if counts(sv) and sv.value is not None and sv.family not in fams and \
+                        same_quantity(q[0], q[1], sv.value, sv.unit, config.OPTION_REL_TOL):
+                    fams.add(sv.family)
+                    agreeing.append(f"{_model(sv.role)} blind solve ({sv.value:g} {sv.unit})".replace(" )", ")"))
+            ex = s.extract or {}
+            if ex.get("value") is not None and same_quantity(q[0], q[1], ex["value"], ex.get("unit", ""),
+                                                             config.OPTION_REL_TOL):
+                agreeing.append(f"the stored solution ({ex['value']:g} {ex.get('unit', '')})".replace(" )", ")"))
+        if len(agreeing) >= 2:
+            d.agree += len(agreeing)
+            d.notes.append(f"Content \"{content}\" for the blank option agreed by {len(agreeing)} independent "
+                           f"sources: {'; '.join(agreeing)}")
+            return True
+        d.against += 1
+        d.notes.append(f"Content \"{content}\" for the blank option: only {len(agreeing)} independent source(s) "
+                       f"agree{(': ' + '; '.join(agreeing)) if agreeing else ''}"
+                       + ("" if q else " (the content is not a value code can compare)"))
+        return False
+
+    def _value_fix(self, d, s: Signals, pq):
+        """(wrong value, right value, unit, text) when a solution_fix is a final-value correction that every
+        signal backs: key confirmed by both solver families and the option/value check, solution ends elsewhere."""
+        if d.repair != "solution_fix" or d.key_status != KEY_OK:
+            return None
+        ex, au = s.extract or {}, s.audit or {}
+        if ex.get("value") is None or au.get("contradiction") or au.get("about_other_question"):
+            return None
+        fams = {sv.family for sv in s.solvers if counts(sv)}
+        if len(fams) < 2:
+            return None
+        if pq.has_options:
+            if any(_check_verdicts(s, L) != {"correct"} for L in s.key):
+                return None
+            q = parse_quantity(pq.split.options_text.get(s.key[0], "")) if len(s.key) == 1 else None
+            if not q:
+                return None
+            right, unit = q
+        else:
+            if _check_verdicts(s, "key") != {"correct"}:
+                return None
+            try:
+                right, unit = float(s.key[0]), asked_unit(pq.split.stem_text)
+            except ValueError:
+                return None
+        wrong = ex["value"]
+        if same_quantity(wrong, ex.get("unit", ""), right, unit, config.OPTION_REL_TOL):
+            return None
+        return wrong, right, unit
+
     def _code_edit_preview(self, d, pq, findings, claim) -> str:
         if d.verdict != "defect" or not d.repair:
             return "none"
@@ -228,7 +290,7 @@ class Runner:
                                                             for f in pq.answer.flags) else None)
         return None
 
-    def _task(self, d, code_edits) -> str:
+    def _task(self, d, code_edits, value_fix=None) -> str:
         if d.needs_triage == "verdict":
             return ("Code could not decide the verdict from the evidence. Choose `verdict` and, for a defect, "
                     f"`repair`. Code signals point at these repairs: {list(d.allowed_repairs) or 'none'}. "
@@ -241,9 +303,15 @@ class Runner:
             return (f"Code decided verdict = {d.verdict}, repair = {d.repair} (an option is blank or missing). "
                     "Give that option's correct content in `option_content`, using the stored solution if it "
                     "states it. Put the verdict you believe in `verdict`.")
+        fix = ""
+        if value_fix:
+            wrong, right, unit = value_fix
+            fix = (f" The stored solution ends at the wrong value {wrong:g}; the answer key, both blind solvers and "
+                   f"the independent check agree on {right:g} {unit}. Propose the minimal solution_fix `edit` that "
+                   f"changes only that final value to {right:g} (in the unit the solution uses).").replace(" .", ".")
         return (f"Code decided verdict = {d.verdict}, repair = {d.repair or 'none'}. Do not re-decide them; state "
                 "in `verdict`/`repair` what you believe, so code can detect a disagreement and route to faculty. "
-                f"Give an `edit` only if the repair needs one and it is not in the list of code edits.")
+                f"Give an `edit` only if the repair needs one and it is not in the list of code edits.{fix}")
 
     def _signals_text(self, s: Signals, pq, code_edits: str) -> dict:
         solv = []
@@ -284,7 +352,28 @@ class Runner:
             e, how = map_clean_edit(pq, s.triage["edit"])
         if not e:
             return None, how, ["no edit"]
-        return e, how, guard(e, d.repair, pq, self.tax)
+        fails = guard(e, d.repair, pq, self.tax)
+        if how.startswith("llm: mapped") and e["field"] in ("question", "solution"):
+            if re.findall(r"<[^>]*>", e["find"]) != re.findall(r"<[^>]*>", e["replace"]):
+                fails.append("edit drops or changes markup")
+        if d.repair == "solution_fix":
+            vf = self._value_fix(d, s, pq)
+            if not vf:
+                fails.append("solution_fix auto-applies only as a final-value correction that every signal backs")
+            elif "_find_clean" not in e:
+                fails.append("solution edit is not a clean-text value correction")
+            else:
+                wrong, right, unit = vf
+                sol_unit = (s.extract or {}).get("unit", "")
+                r_si, r_dim = to_si(right, unit)
+                one_si, s_dim = to_si(1.0, sol_unit)
+                right_sol = r_si / one_si if (r_dim and r_dim == s_dim) else right
+                bad = value_correction_check(e["_find_clean"], e["_replace_clean"], wrong, right_sol)
+                fails += bad
+                if not bad:
+                    d.notes.append(f"Solution edit changes only the final value {wrong:g} -> {right_sol:g}, "
+                                   "matching the key, both blind solves and the independent check")
+        return e, how, fails
 
     EVIDENCE_MAX = 600
 
@@ -305,55 +394,115 @@ class Runner:
                 parts.append(_show_solver(sv, pq))
             ex = s.extract or {}
             if ex.get("ok"):
-                parts.append(f"Stored solution ({_model('extract')}) ends at "
-                             + (ex.get("shown") or ex.get("statement") or "no clear value"))
+                end = ex.get("shown") or (f"\"{_clip(ex['statement'], 80)}\"" if ex.get("statement") else
+                                          "no clear value")
+                parts.append(f"Stored solution ({_model('extract')}) ends at {end}")
             checks = _show_checks(s)
             if checks:
                 parts.append(checks)
+        parts += d.notes
         au = s.audit or {}
         if au.get("values_not_in_question") and "stem_data" in disputed:
             parts.append(f"Audit ({_model('audit')}): solution uses values the stem never gives: "
-                         + "; ".join(map(str, au["values_not_in_question"]))[:120])
+                         + _clip("; ".join(_show_value(v) for v in au["values_not_in_question"]), 140))
         if au.get("contradiction"):
             parts.append(f"Audit ({_model('audit')}): solution contradicts itself: "
-                         f"{str(au.get('contradiction_quote'))[:100]}")
+                         f"\"{_clip(str(au.get('contradiction_quote')), 110)}\"")
         if au.get("about_other_question"):
             parts.append(f"Audit ({_model('audit')}): part of the solution is about another question: "
-                         f"{str(au.get('other_question_quote'))[:100]}")
+                         f"\"{_clip(str(au.get('other_question_quote')), 110)}\"")
         if d.decided_by in ("triage", "code+llm") and s.triage and s.triage.get("evidence"):
             parts.append(f"Triage ({_model('triage')}): {s.triage['evidence']}")
         if why and d.verdict in ("defect", None):
             parts.append("Sent to faculty: " + "; ".join(why))
         out = ""
         for p in parts:                       # keep whole parts, in order, within the limit
+            p = re.sub(r"\s+", " ", str(p)).strip().rstrip(".").strip()
+            if not p:
+                continue
             nxt = f"{out}. {p}" if out else p
             if len(nxt) > cls.EVIDENCE_MAX:
                 continue
             out = nxt
-        return out
+        return out + "." if out else out
 
+    # ------------------------------------------------------------------ reply
     def _reply(self, r, claim, d, route, pq, s):
-        facts = self._facts(claim, d, route, pq)
+        proposed = bool(claim.values or claim.letters) and not s.injection
+        info = self._reply_info(claim, d, route, pq, s)
+        facts = self._facts(claim, d, route, info, proposed)
         lang = "hinglish" if claim.hinglish else "english"
         try:
             text, fails = run_reply(self.c, r, lang, d.verdict or "undecided", route, facts,
-                                    syllabus="syllabus" in claim.categories)
+                                    syllabus="syllabus" in claim.categories, proposed_answer=proposed)
         except LLMError as e:
             text, fails = "", [f"call failed: {e}"[:120]]
         if fails or not text:
-            return self._fallback_reply(d, route), fails, "fallback"
+            return self._fallback_reply(d, route, lang, info, proposed), fails, "fallback"
         return text, fails, "llm"
 
-    def _facts(self, claim, d, route, pq) -> str:
-        lines = []
+    def _reply_info(self, claim, d, route, pq, s) -> dict:
+        """The answer facts the reply may use, all decided by code."""
+        info = {"unsound": d.repair == "unsound" or d.key_status == UNSOUND, "answer": "", "step": "",
+                "content": "", "letter": ""}
+        if info["unsound"]:
+            return info
+        if d.repair == "option_repair":
+            content = str((s.triage or {}).get("option_content") or "")
+            blank = [L for L in s.key if not pq.split.options_text.get(L, "").strip()]
+            info["letter"] = blank[0] if blank else ""
+            if content and route == "auto_apply" and info["letter"]:
+                info["content"] = content
+                info["answer"] = f"({info['letter']}) {content}"
+                info["step"] = self._key_step(s, pq, value=parse_quantity(content))
+            return info
         ans = d.new_answer if d.repair == "answer_key" and d.new_answer else (
             tuple(pq.answer.values) if d.key_status in (KEY_OK, KEY_WRONG) or d.verdict == "no_error" else None)
-        if ans and pq.has_options:
-            lines.append("Correct answer: " + ", ".join(f"({L}) {pq.split.options_text.get(L, '')}" for L in ans))
-        elif ans:
-            lines.append(f"Correct answer: {ans[0]}")
-        if claim.values or claim.letters:
-            lines.append(f"Student's answer: {', '.join(map(str, claim.letters or [f'{v:g}' for v in claim.values]))}")
+        if not ans:
+            return info
+        if pq.has_options:
+            info["answer"] = ", ".join(f"({L}) {pq.split.options_text.get(L, '')}".strip() for L in ans)
+            info["step"] = self._key_step(s, pq, letters=set(ans))
+        else:
+            unit = asked_unit(pq.split.stem_text)
+            info["answer"] = f"{ans[0]} {unit}".strip()
+            try:
+                info["step"] = self._key_step(s, pq, value=(float(ans[0]), unit))
+            except ValueError:
+                pass
+        return info
+
+    @staticmethod
+    def _key_step(s: Signals, pq, letters=None, value=None) -> str:
+        """The working of a blind solver whose answer is the correct one (code checked the match)."""
+        for sv in s.solvers:
+            if not counts(sv) or not sv.working:
+                continue
+            if letters is not None and sv.letters and set(sv.letters) == letters:
+                return sv.working
+            if value and sv.value is not None and same_quantity(sv.value, sv.unit, value[0], value[1],
+                                                                config.OPTION_REL_TOL):
+                return sv.working
+        return ""
+
+    def _facts(self, claim, d, route, info, proposed) -> str:
+        lines = []
+        if info["unsound"]:
+            lines.append("No option is correct as written, so there is no right option to tell the student. "
+                         "Do not name any option or value as the answer.")
+        if info["answer"]:
+            lines.append(f"Correct answer: {info['answer']}")
+        if info["content"]:
+            lines.append(f"Option ({info['letter']}) was blank; it now reads {info['content']}.")
+        elif d.repair == "option_repair" and info["letter"]:
+            lines.append(f"Option ({info['letter']}) is blank; a teacher will add its content.")
+        if info["step"]:
+            lines.append(f"Key step: {info['step']}")
+        if proposed:
+            given = [f"({L})" for L in claim.letters] or [f"{v:g}" for v in claim.values]
+            lines.append(f"Student's answer: {', '.join(given)}")
+        else:
+            lines.append("The student did not propose an answer of their own; do not say their answer was wrong.")
         lines.append("The student spotted a real problem: " + ("yes" if d.verdict == "defect" else "no"))
         if d.verdict == "defect":
             lines.append({"auto_apply": "The fix is live now.", "faculty_review": "A teacher will review and fix it.",
@@ -370,34 +519,80 @@ class Runner:
         return "\n".join(x for x in lines if x)
 
     @staticmethod
-    def _fallback_reply(d, route) -> str:
+    def _fallback_reply(d, route, lang, info, proposed) -> str:
+        """Code-built reply, used when the model's reply fails a check."""
+        hi = lang == "hinglish"
+        ans = info.get("answer") or ""
         if d.repair == "syllabus":
-            return ("Thanks for flagging this. A teacher will check whether it is in the syllabus; "
-                    "the question stays available meanwhile.")
+            return ("Thanks batane ke liye. Teacher check karenge ki yeh syllabus mein hai ya nahi; tab tak question "
+                    "available rahega." if hi else "Thanks for flagging this. A teacher will check whether it is in "
+                    "the syllabus; the question stays available meanwhile.")
+        if info.get("unsound"):
+            return ("Thanks, aapne sahi sawaal uthaya: jaisa likha hai, koi bhi option sahi nahi hai. Teacher is "
+                    "question ko theek karenge." if hi else "Thanks, you were right to question this: as written, "
+                    "none of the options is correct. A teacher will correct the question.")
         if d.verdict == "defect":
-            return ("Thanks, you were right to flag this: there is a problem with this question. "
-                    + ("It has been corrected." if route == "auto_apply" else "A teacher will review and fix it."))
+            if hi:
+                return ("Thanks, aapne sahi pakda, is question mein galti hai." + (f" Sahi answer {ans} hai." if ans
+                        else "") + (" Ab yeh theek ho gaya hai." if route == "auto_apply" else
+                                    " Teacher check karke ise theek karenge."))
+            return ("Thanks, you were right to flag this: there is a problem with this question."
+                    + (f" The correct answer is {ans}." if ans else "")
+                    + (" It's fixed now." if route == "auto_apply" else " A teacher will review and fix it."))
         if d.verdict == "no_error":
-            return "Thanks for checking. We re-solved it and the given answer is correct; recheck your steps once more."
+            if hi:
+                return (f"Humne ise alag se dobara solve kiya: sahi answer {ans} hai, aur question theek hai."
+                        if ans else "Humne ise dobara check kiya: question aur answer theek hain.")
+            lead = "Thanks for checking. " if proposed else ""
+            return (lead + (f"We re-solved it independently and the correct answer is {ans}, so the question is "
+                            "right as given." if ans else "We re-checked it and the question is right as given."))
         if d.verdict in ("display_issue", "app_issue"):
-            return "Thanks for telling us. The question itself is fine; we've passed this to the app team."
+            return ("Thanks batane ke liye. Question khud theek hai; yeh problem app team ko bhej di hai." if hi else
+                    "Thanks for telling us. The question itself is fine; we've passed this to the app team.")
         if d.verdict == "language_mode":
-            return "Thanks for asking. This question is only available in English for now."
+            return ("Thanks poochne ke liye. Abhi yeh question sirf English mein available hai." if hi else
+                    "Thanks for asking. This question is only available in English for now.")
         if d.verdict == "already_fixed":
-            return "Thanks! A teacher has already fixed this, so the question should look right now."
-        return "Thanks for the report. A teacher will take a look."
+            return ("Thanks! Teacher ne ise pehle hi theek kar diya hai." if hi else
+                    "Thanks! A teacher has already fixed this, so the question should look right now.")
+        return ("Thanks batane ke liye. Teacher ise dekhenge." if hi else
+                "Thanks for the report. A teacher will take a look.")
 
 
 # --------------------------------------------------------------------------
 # Evidence helpers (code-built, D-001)
 
+def _check_verdicts(s: Signals, cand: str) -> set:
+    return {v.verdict for v in s.option_checks.get(cand, []) if v.verdict in ("correct", "incorrect")}
+
+
 def _model(role: str) -> str:
     return config.ROLES[role][1].split("/")[-1]
 
 
+def _clip(text: str, n: int) -> str:
+    """Cut at a word boundary, with an ellipsis."""
+    text = re.sub(r"\s+", " ", str(text or "")).strip()
+    if len(text) <= n:
+        return text
+    cut = text[:n].rsplit(" ", 1)[0].rstrip(",;:.")
+    return cut + "…"
+
+
+def _show_value(v) -> str:
+    try:
+        x = json.loads(v) if isinstance(v, str) and v.startswith("{") else v
+    except ValueError:
+        x = v
+    if isinstance(x, dict):
+        return f"{x.get('what', '')} {x.get('value', '')}".strip()
+    return str(x)
+
+
 def _show_answer(ans, pq) -> str:
     if pq.has_options:
-        return ", ".join(f"({L}) {pq.split.options_text.get(L, '')}".strip()[:40] for L in sorted(ans))
+        return ", ".join(f"({L}) " + (_clip(pq.split.options_text.get(L, ''), 40).rstrip('.') or "[blank]")
+                         for L in sorted(ans))
     return " ".join([str(ans[0]), asked_unit(pq.split.stem_text)]).strip()
 
 
@@ -407,12 +602,18 @@ def _show_solver(sv, pq) -> str:
         return f"{who}: no answer"
     val = f"{sv.value:g} {sv.unit}".strip() if sv.value is not None else ""
     if pq.has_options:
-        got = f"({''.join(sv.letters)})" if sv.letters else "no option"
-        txt = f"{val} = {got}" if val else got
+        if sv.letters and val:
+            txt = f"{val} = ({''.join(sv.letters)})"
+        elif sv.letters:
+            txt = f"({''.join(sv.letters)}), letter only (no value given)"
+        elif val:
+            txt = f"{val}, which matches no listed option"
+        else:
+            txt = "no option and no value"
     else:
         txt = val or "no value"
     if sv.missing:
-        txt += f", assumed missing data ({str(sv.missing)[:50]}), not counted"
+        txt += f"; reports missing data ({_clip(sv.missing, 50)}), so not counted"
     return f"{who}: {txt}"
 
 

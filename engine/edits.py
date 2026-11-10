@@ -121,8 +121,44 @@ def map_clean_edit(pq: ParsedQuestion, e: dict) -> tuple[dict | None, str]:
     raw, uniq = locate_raw(field_raw(pq, fld), find_clean)
     if not raw or not uniq:
         return None, "find_clean not located uniquely in the raw field"
+    minimal = minimal_raw_replace(raw, find_clean, str(replace))
+    if minimal is not None:
+        return {"field": fld, "find": raw, "replace": minimal, "_find_clean": find_clean,
+                "_replace_clean": str(replace)}, "llm: mapped from clean text (minimal change, markup kept)"
     return {"field": fld, "find": raw, "replace": html.escape(str(replace), quote=False),
-            "_find_clean": find_clean}, "llm: mapped from clean text"
+            "_find_clean": find_clean, "_replace_clean": str(replace)}, "llm: mapped from clean text"
+
+
+def _token_diff(a: str, b: str) -> tuple[str, str] | None:
+    """The changed middle of a -> b, widened to whole tokens (letters, digits, '.')."""
+    if a == b:
+        return None
+    i = 0
+    while i < min(len(a), len(b)) and a[i] == b[i]:
+        i += 1
+    j = 0
+    while j < min(len(a), len(b)) - i and a[len(a) - 1 - j] == b[len(b) - 1 - j]:
+        j += 1
+    tok = lambda ch: ch.isalnum() or ch == "."
+    while i > 0 and tok(a[i - 1]):
+        i -= 1
+    while j > 0 and tok(a[len(a) - j]):
+        j -= 1
+    return a[i:len(a) - j], b[i:len(b) - j]
+
+
+def minimal_raw_replace(raw: str, find_clean: str, replace_clean: str) -> str | None:
+    """Apply a small clean-text change inside the raw span, keeping its markup. None if not possible."""
+    d = _token_diff(find_clean, replace_clean)
+    if not d or not d[0]:
+        return None
+    old, new = html.escape(d[0], quote=False), html.escape(d[1], quote=False)
+    text_only = re.sub(r"<[^>]*>", lambda m: "\0" * len(m.group(0)), raw)   # never match inside a tag
+    hits = [m.start() for m in re.finditer(re.escape(old), text_only)]
+    if len(hits) != 1:
+        return None
+    k = hits[0]
+    return raw[:k] + new + raw[k + len(old):]
 
 
 # --------------------------------------------------------------------------
@@ -192,3 +228,21 @@ def public_edit(edit: dict | None) -> dict | None:
     if not edit:
         return None
     return {"field": edit["field"], "find": edit["find"], "replace": edit["replace"]}
+
+
+_NUMTOK = re.compile(r"\d+(?:\.\d+)?")
+
+
+def value_correction_check(find_clean: str, replace_clean: str, wrong: float, right: float) -> list[str]:
+    """A solution_fix edit that corrects the final value: only numbers change, every changed number
+    goes from the solution's wrong value to the agreed value. Returns failures ([] = ok)."""
+    if _NUMTOK.sub("#", find_clean or "") != _NUMTOK.sub("#", replace_clean or ""):
+        return ["solution edit changes more than the value"]
+    olds, news = _NUMTOK.findall(find_clean), _NUMTOK.findall(replace_clean)
+    changed = [(float(a), float(b)) for a, b in zip(olds, news) if a != b]
+    close = lambda x, y: abs(x - y) <= 1e-6 * max(1.0, abs(y))
+    if not changed:
+        return ["solution edit changes no value"]
+    if not all(close(a, wrong) and close(b, right) for a, b in changed):
+        return [f"solution edit does not change {wrong:g} to {right:g}"]
+    return []

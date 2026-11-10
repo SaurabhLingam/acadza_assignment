@@ -71,3 +71,26 @@ The user reviewed the v1 prompts before any of them ran. The v1 files are kept u
 - **What changed:** For syllabus reports, the question stays live while a teacher checks it; the reply never says it was or will be removed. Code also adds this to the facts, and `check_reply` rejects a syllabus reply that mentions removal.
 - **Why:** The taxonomy says syllabus claims are faculty-only and the question stays live meanwhile.
 - **Evidence:** Pre-run review by the user; `data/taxonomy.json` (repair `syllabus`).
+
+## Review of the first 6-report test: 2026-11-10 (solver_v3, solution_audit_v3, reply_v3, triage_v2)
+The v2 prompts (and triage_v1) were used in run `20261110T161819Z` and stay unchanged.
+
+### solver_v3
+- **What changed:** `final_expression` is null only when the answer is a statement; a number or ratio is always given as an expression, even if it matches no option or a letter is also picked. Code also records when a solver's answer is only its picked letter (`from_letter`) and uses that letter as its answer.
+- **Why:** gpt-oss-120b returned `final_expression: null` for numeric answers, so code could not compare its value or apply the never-the-closest-option rule.
+- **Evidence:** Run `20261110T161819Z`: R011 (ratio 1:1, null expression), R027 (5.7e-5, null expression, letter A only).
+
+### solution_audit_v3
+- **What changed:** Standard data (the density of water, atmospheric pressure, the speed of sound) and pure numbers that belong to a formula (the 3 in γ = 3α) are no longer listed as values the question never gives.
+- **Why:** False positives would wrongly support a stem_data verdict.
+- **Evidence:** Run `20261110T161819Z`: R016 flagged "1 g/cm^3 density of water", R027 flagged the factor 3 in γ = 3α.
+
+### reply_v3
+- **What changed:** If the student proposed no answer, the reply states the right answer and the key step neutrally and never says their answer was wrong. If no option is correct, the reply never names an option or value as the answer. It names an option letter or value only if it appears in the facts. The Hinglish rule is stronger and has an example. Code now supplies the key step (the working of a blind solver whose answer code matched to the correct one), the post-edit content of a repaired option, and an explicit "no option is correct" fact. `check_reply` rejects option letters or values not in the facts, an English reply to a Hinglish comment, and "your answer was wrong" when the student proposed none; a failure falls back to a code-built template (English or Hinglish). Letters in a comment flagged as an injection are not treated as the student's answer.
+- **Why:** M-003 (R034 told "the correct answer is B" with no correct option); R004 and R011 answered in English to Hinglish comments; R027 told "Your answer was not correct" although the student gave no answer; replies had no real key step because the facts contained none.
+- **Evidence:** Run `20261110T161819Z`, reports R004, R011, R027, R029, R034.
+
+### triage_v2
+- **What changed:** When the task says the stored solution ends at a wrong value and gives the agreed value, triage proposes the minimal solution_fix edit: the shortest unique span around the wrong final value, with only that value changed. Code puts the wrong and agreed values in the task block only when the key, both solver families and the option/value check all agree.
+- **Why:** In R016 triage chose solution_fix but returned `"edit": null` with no reason (the cached response confirms it). The task block made the edit optional ("only if the repair needs one") and never told triage which value to change, so the case went to faculty for want of an edit.
+- **Evidence:** Run `20261110T161819Z`, R016; cached triage response for that call.

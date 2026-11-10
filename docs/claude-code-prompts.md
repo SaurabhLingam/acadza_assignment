@@ -260,3 +260,46 @@ Then run the tests, commit, and run the 6-report test. Show me for each report: 
 </pasted_content id="5d75">
 
 ```
+
+---
+
+### 2026-11-10T22:47:00+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+
+
+<pasted_content id="5d75">
+mistake: the reply writer told the R034 student "the correct answer is B" on a question with no correct option. Code gave it no correct-answer fact, so it made one up. Caught reviewing the 6-report test.
+
+decision: option_repair can auto-apply when two independent sources agree on the missing content, and the stored solution counts as one source. The evidence must say exactly which sources agreed.
+
+Approve your fixes 1–4, 6, 7, 8 (reply_v3, solver_v3, solution_audit_v3, plus code changes). Also:
+- R027's reply says "Your answer was not correct", but that student gave no answer. When the comment proposes no answer, the reply just states the right answer and the key step, neutrally.
+- solver: if final_expression is null but chosen_options is set, code uses the letter as that solver's answer.
+- R016: triage should propose a minimal solution_fix edit (e.g. "a = 40 cm" → "a = 20 cm") when the key, both solvers and the value check agree on the value. If it passes the guards and all signals agree, auto_apply. Find out why triage didn't propose it this time.
+- Fix the R011 evidence wording.
+
+Also: docs/eval-labels.csv is now verified. Set label_source to user_verified on all 44 rows, and add a line at the top of the file: "Drafted by Claude Code; independently re-solved in a separate Claude session; traps and disputed cases reviewed by me."
+
+Then rerun the same 6 (cached solves make it cheap), plus 6 new ones that exercise untested paths: R005 (integer, wrong key), R020 (malformed mcq key), R021 (type_mismatch), R007 (stem_data), R001 (duplicate group), R039 (Hinglish language request). Same per-report summary as before, plus a score against eval-labels.csv. Commit, and keep logs/runs in git.
+</pasted_content id="5d75">
+
+```
+
+---
+
+### 2026-11-10T23:04:29+05:30
+
+session: `3fa27d9c-9c89-4801-bd05-2c41bbce6651`
+
+```text
+<task-notification>
+<task-id>be5xg9m15</task-id>
+<tool-use-id>toolu_01BPfxft26dwTsVgvHt6bEDp</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\3fa27d9c-9c89-4801-bd05-2c41bbce6651\tasks\be5xg9m15.output</output-file>
+<status>completed</status>
+<summary>Background command "PYTHONIOENCODING=utf-8 python -m engine.run --reports R004,R011,R016,R027,R029,R034,R005,R020,R021,R007,R001,R039 --cap 0.50 &gt; /c/Users/saura/AppData/Local/Temp/claude/ebefd33da09cf696/3fa27d9c-9c89-4801-bd05-2c41bbce6651/scratchpad/run2.log 2&gt;&amp;1" completed (exit code 0)</summary>
+</task-notification>
+```

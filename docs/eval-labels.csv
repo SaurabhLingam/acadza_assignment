@@ -1,45 +1,46 @@
+# Drafted by Claude Code; independently re-solved in a separate Claude session; traps and disputed cases reviewed by me.
 reportId,questionId,my_verdict,my_repair,my_answer,notes,label_source
-R001,60f744b3f1b9bc7cc7b4a949,defect,answer_key,A,Solution gives sqrt(40^2+(60-30)^2)=50 V = A; key C = 130 V,claude_draft
-R002,60f744b3f1b9bc7cc7b4a949,defect,answer_key,A,Duplicate of R001; vague comment but key is wrong,claude_draft
-R003,60f744b3f1b9bc7cc7b4a949,defect,answer_key,A,Duplicate of R001; student's 50 V is correct,claude_draft
-R004,68e870ef42c06737d6e565c4,defect,answer_key,D,P = 1/3*rho*v^2 = 1/3*0.09*400^2 = 4800 = D; key A (4556) wrong; student's 8225 (B) also wrong,claude_draft
-R005,68dea616d0cda73d07e93ae6,defect,answer_key,1,Flux q/(4e0) + q/(4e0) = q/(2e0) so n = 1; key 2; student right,claude_draft
-R006,696a866665252c04fc1f81c2,defect,stem_data,50,Cube edge 10 cm missing from stem; solution uses (10x10^-2)^3,claude_draft
-R007,60f742f6660d187cc13a8078,defect,stem_data,C,"Inductance 95.5 mH missing from stem; solution uses it (X_L = 30 ohm, Z = 50 ohm = C)",claude_draft
-R008,60f742f6660d187cc13a8078,defect,stem_data,C,Duplicate of R007,claude_draft
-R009,622f08d7b70e4b50e4500a1b,defect,option_repair,C,"Only options A-C stored; key C (10 m/s) present; option D content unknown, so no source for the edit (faculty)",claude_draft
-R010,622f08d7b70e4b50e4500a1b,defect,option_repair,C,Duplicate of R009,claude_draft
-R011,68e872546e45ba37dcc16bc0,defect,option_repair,C,Option C blank; forces are equal and opposite so C should be 1 : 1,claude_draft
-R012,61dffbec08489156b684bd22,defect,spelling,A,Option A 'Epithellial tisue' -> 'Epithelial tissue',claude_draft
-R013,617fa18efd53ff1629ed890f,defect,exam_reference,D,Remove '(NEET 2019)' from stem; also 'ofleaf' missing space,claude_draft
-R014,63765a28f1d8416ae0408d89,defect,markup_leak,C,Literal \frac{7}{8} in stem; 3 half-lives = 180 days = C,claude_draft
-R015,6956d79788d7701e5617bc29,defect,identical_options,B,Options B and C both '0 W'; new distractor needed (faculty),claude_draft
-R016,6263d75bdd44e265ef926d97,defect,solution_fix,20,"800 = 2*a^2 so a = 20 cm; key 20 right, solution ends 'a = 40 cm'",claude_draft
-R017,6208e80a9cb2ab67dac61bd0,already_fixed,,C,errorHistory: faculty fixed 'mere'->'more' on 2026-11-07; report filed 2026-11-04; current text clean,claude_draft
-R018,612151a6a34397610a9a2e58,defect,solution_fix,B,Solution contains 5.47 A from another question plus raw \AA; KE = h^2/(2m lambda^2) = 16.8 eV = B (key right),claude_draft
-R019,612151a6a34397610a9a2e58,defect,solution_fix,B,Duplicate of R018,claude_draft
-R020,68c8153cfb6b2f16e2d3ceaf,defect,answer_key,"A,B,D","Key stored as one string ['A, B, D']; should be ['A','B','D']; student's answer is correct",claude_draft
-R021,68f21caf941cda588bc04365,defect,type_mismatch,B,"mcq with answer ['', 'B']; only B (tau = 3/ln8 = 1.44 min) correct, so should be scq. Unreported: chapter 'Mathematics in physics' is wrong",claude_draft
-R022,61ee6c9d90a1a968a168686b,defect,spelling,B,"Option D 'Choroid plexux' -> 'plexus'. Unreported: solution 'prominant', 'Maceus'",claude_draft
-R023,68ecbacb2ec87a18deba1ad7,defect,wrong_chapter,B,Neuron action-potential question filed under Botany / The Living World,claude_draft
-R024,5fc60508028950133eac8963,defect,answer_form,20,Integer answer 20 N; unit not stated in question,claude_draft
-R025,622df25ab70e4b50e44ff837,defect,diagram,B,Stem says 'as shown in figure'; no image stored. Answer B correct on physics,claude_draft
-R026,620e23cecc50543bc7db9186,defect,syllabus,B,"UNSURE of verdict: syllabus is a repair, so defect is the only verdict that pairs with it; faculty confirm, question stays live",claude_draft
-R027,6062ec84518e9535e120c422,no_error,,A,"Injection attempt; alpha = 1.9e-5, gamma = 3*alpha = 5.7e-5 = A, key right. Unreported: solution units '/AC', '/CC'",claude_draft
-R028,6956d7bb23cb221e570d6013,no_error,,B,"H = R gives tan(theta) = 4, so tan^-1(4) = B",claude_draft
-R029,68e8734442c06737d6e56da4,no_error,,A,"F - 100mu = 10, 2F - 100mu = 100 so mu = 0.8 = A",claude_draft
-R030,6956d7e988d7701e5617bd3e,no_error,,D,pi = A*(pi/8)*cos(pi/4) so A = 8*sqrt2 m = D. Unreported: unit inside the root in options,claude_draft
-R031,68dea619d0cda73d07e93aee,no_error,,4,(1/2)(pi/2 - pi/4)t^2 = 2*pi so t = 4 s,claude_draft
-R032,68dea7c2387eea3d0d95f9bb,no_error,,8,Shift = 0.08 m = 8 cm; question asks in cm,claude_draft
-R033,68dea715387eea3d0d95f790,no_error,,3113,6*7.203^2 = 311.299 -> 311.3 (4 sig figs); 10A = 3113,claude_draft
-R034,695ee00b88d7701e561aabc5,defect,unsound,,"UNSURE: I = 4*I0*cos^2(phi/2) = 2*I0 so A is false; R ('always the sum if phase non-zero') is also false, so no option fits; solution contradicts itself. Alternative label: no_error with key D if R is read as true",claude_draft
-R035,66fe9dbe22132e5a70a3e579,no_error,,D,Student misread 'not antagonistic'; relaxin-inhibin is the non-antagonistic pair = D. Unreported: solution says insulin/glucagon synergistic (false),claude_draft
-R036,60ca4feb6420652745f55522,display_issue,,C,All 4 options present in stored HTML; 1.1*0.9 = 0.99 so 99 N = C,claude_draft
-R037,68c9ae5afb6b2f16e2d43b1c,display_issue,,D,Slow load; content fine (3.1 - 2.0 = 1.1 V = D),claude_draft
-R038,68f21df0941cda588bc0470b,app_issue,,A,"Recorded-option bug; KE x4 -> p x2 = A, key right",claude_draft
-R039,68c801bc1b1dbc16dc93bf2b,language_mode,,A,"Wants Hindi; lambda_min = 0.5 A, KE = 150/0.25 = 600 eV = A",claude_draft
-R040,6264197209f4fd65f58f5707,defect,spelling,C,"UNSURE: comment 'wrong' is vague and key C (Golden rice) is right, but option B 'Canolla' and solution 'riceis', 'tonight blindness' are real defects. Alternative label: not_actionable",claude_draft
-R041,6208e298fa399567e0878700,not_actionable,,A,"Junk comment; question reads clean, Julius von Sachs = A",claude_draft
-R042,63c7cce12981ed154ee92c94,defect,wrong_chapter,C,Displacement current (EM waves) filed under Geometrical optics; i_d = C*dV/dt = 2.2 uA = C,claude_draft
-R043,636283dbe3770c24f866e6d6,no_error,,B,"R = 4r, Q = 64q, sigma ratio = 64/16 = 4:1 = B",claude_draft
-R044,68dea577d0cda73d07e9391c,no_error,,14,V_P - V_S = (11/8 - 1/2)*16 = 14 V; student's 22 is V_P alone,claude_draft
+R001,60f744b3f1b9bc7cc7b4a949,defect,answer_key,A,Solution gives sqrt(40^2+(60-30)^2)=50 V = A; key C = 130 V,user_verified
+R002,60f744b3f1b9bc7cc7b4a949,defect,answer_key,A,Duplicate of R001; vague comment but key is wrong,user_verified
+R003,60f744b3f1b9bc7cc7b4a949,defect,answer_key,A,Duplicate of R001; student's 50 V is correct,user_verified
+R004,68e870ef42c06737d6e565c4,defect,answer_key,D,P = 1/3*rho*v^2 = 1/3*0.09*400^2 = 4800 = D; key A (4556) wrong; student's 8225 (B) also wrong,user_verified
+R005,68dea616d0cda73d07e93ae6,defect,answer_key,1,Flux q/(4e0) + q/(4e0) = q/(2e0) so n = 1; key 2; student right,user_verified
+R006,696a866665252c04fc1f81c2,defect,stem_data,50,Cube edge 10 cm missing from stem; solution uses (10x10^-2)^3,user_verified
+R007,60f742f6660d187cc13a8078,defect,stem_data,C,"Inductance 95.5 mH missing from stem; solution uses it (X_L = 30 ohm, Z = 50 ohm = C)",user_verified
+R008,60f742f6660d187cc13a8078,defect,stem_data,C,Duplicate of R007,user_verified
+R009,622f08d7b70e4b50e4500a1b,defect,option_repair,C,"Only options A-C stored; key C (10 m/s) present; option D content unknown, so no source for the edit (faculty)",user_verified
+R010,622f08d7b70e4b50e4500a1b,defect,option_repair,C,Duplicate of R009,user_verified
+R011,68e872546e45ba37dcc16bc0,defect,option_repair,C,Option C blank; forces are equal and opposite so C should be 1 : 1,user_verified
+R012,61dffbec08489156b684bd22,defect,spelling,A,Option A 'Epithellial tisue' -> 'Epithelial tissue',user_verified
+R013,617fa18efd53ff1629ed890f,defect,exam_reference,D,Remove '(NEET 2019)' from stem; also 'ofleaf' missing space,user_verified
+R014,63765a28f1d8416ae0408d89,defect,markup_leak,C,Literal \frac{7}{8} in stem; 3 half-lives = 180 days = C,user_verified
+R015,6956d79788d7701e5617bc29,defect,identical_options,B,Options B and C both '0 W'; new distractor needed (faculty),user_verified
+R016,6263d75bdd44e265ef926d97,defect,solution_fix,20,"800 = 2*a^2 so a = 20 cm; key 20 right, solution ends 'a = 40 cm'",user_verified
+R017,6208e80a9cb2ab67dac61bd0,already_fixed,,C,errorHistory: faculty fixed 'mere'->'more' on 2026-11-07; report filed 2026-11-04; current text clean,user_verified
+R018,612151a6a34397610a9a2e58,defect,solution_fix,B,Solution contains 5.47 A from another question plus raw \AA; KE = h^2/(2m lambda^2) = 16.8 eV = B (key right),user_verified
+R019,612151a6a34397610a9a2e58,defect,solution_fix,B,Duplicate of R018,user_verified
+R020,68c8153cfb6b2f16e2d3ceaf,defect,answer_key,"A,B,D","Key stored as one string ['A, B, D']; should be ['A','B','D']; student's answer is correct",user_verified
+R021,68f21caf941cda588bc04365,defect,type_mismatch,B,"mcq with answer ['', 'B']; only B (tau = 3/ln8 = 1.44 min) correct, so should be scq. Unreported: chapter 'Mathematics in physics' is wrong",user_verified
+R022,61ee6c9d90a1a968a168686b,defect,spelling,B,"Option D 'Choroid plexux' -> 'plexus'. Unreported: solution 'prominant', 'Maceus'",user_verified
+R023,68ecbacb2ec87a18deba1ad7,defect,wrong_chapter,B,Neuron action-potential question filed under Botany / The Living World,user_verified
+R024,5fc60508028950133eac8963,defect,answer_form,20,Integer answer 20 N; unit not stated in question,user_verified
+R025,622df25ab70e4b50e44ff837,defect,diagram,B,Stem says 'as shown in figure'; no image stored. Answer B correct on physics,user_verified
+R026,620e23cecc50543bc7db9186,defect,syllabus,B,"UNSURE of verdict: syllabus is a repair, so defect is the only verdict that pairs with it; faculty confirm, question stays live",user_verified
+R027,6062ec84518e9535e120c422,no_error,,A,"Injection attempt; alpha = 1.9e-5, gamma = 3*alpha = 5.7e-5 = A, key right. Unreported: solution units '/AC', '/CC'",user_verified
+R028,6956d7bb23cb221e570d6013,no_error,,B,"H = R gives tan(theta) = 4, so tan^-1(4) = B",user_verified
+R029,68e8734442c06737d6e56da4,no_error,,A,"F - 100mu = 10, 2F - 100mu = 100 so mu = 0.8 = A",user_verified
+R030,6956d7e988d7701e5617bd3e,no_error,,D,pi = A*(pi/8)*cos(pi/4) so A = 8*sqrt2 m = D. Unreported: unit inside the root in options,user_verified
+R031,68dea619d0cda73d07e93aee,no_error,,4,(1/2)(pi/2 - pi/4)t^2 = 2*pi so t = 4 s,user_verified
+R032,68dea7c2387eea3d0d95f9bb,no_error,,8,Shift = 0.08 m = 8 cm; question asks in cm,user_verified
+R033,68dea715387eea3d0d95f790,no_error,,3113,6*7.203^2 = 311.299 -> 311.3 (4 sig figs); 10A = 3113,user_verified
+R034,695ee00b88d7701e561aabc5,defect,unsound,,"UNSURE: I = 4*I0*cos^2(phi/2) = 2*I0 so A is false; R ('always the sum if phase non-zero') is also false, so no option fits; solution contradicts itself. Alternative label: no_error with key D if R is read as true",user_verified
+R035,66fe9dbe22132e5a70a3e579,no_error,,D,Student misread 'not antagonistic'; relaxin-inhibin is the non-antagonistic pair = D. Unreported: solution says insulin/glucagon synergistic (false),user_verified
+R036,60ca4feb6420652745f55522,display_issue,,C,All 4 options present in stored HTML; 1.1*0.9 = 0.99 so 99 N = C,user_verified
+R037,68c9ae5afb6b2f16e2d43b1c,display_issue,,D,Slow load; content fine (3.1 - 2.0 = 1.1 V = D),user_verified
+R038,68f21df0941cda588bc0470b,app_issue,,A,"Recorded-option bug; KE x4 -> p x2 = A, key right",user_verified
+R039,68c801bc1b1dbc16dc93bf2b,language_mode,,A,"Wants Hindi; lambda_min = 0.5 A, KE = 150/0.25 = 600 eV = A",user_verified
+R040,6264197209f4fd65f58f5707,defect,spelling,C,"UNSURE: comment 'wrong' is vague and key C (Golden rice) is right, but option B 'Canolla' and solution 'riceis', 'tonight blindness' are real defects. Alternative label: not_actionable",user_verified
+R041,6208e298fa399567e0878700,not_actionable,,A,"Junk comment; question reads clean, Julius von Sachs = A",user_verified
+R042,63c7cce12981ed154ee92c94,defect,wrong_chapter,C,Displacement current (EM waves) filed under Geometrical optics; i_d = C*dV/dt = 2.2 uA = C,user_verified
+R043,636283dbe3770c24f866e6d6,no_error,,B,"R = 4r, Q = 64q, sigma ratio = 64/16 = 4:1 = B",user_verified
+R044,68dea577d0cda73d07e9391c,no_error,,14,V_P - V_S = (11/8 - 1/2)*16 = 14 V; student's 22 is V_P alone,user_verified
