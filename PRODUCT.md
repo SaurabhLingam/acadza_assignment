@@ -62,7 +62,7 @@ A flag is a suspect, not a verdict. Trick questions will get flagged too, and th
 the same trick, so **a flag from attempt data never auto-applies.** It always goes to a teacher, who can
 spot a trick question in seconds and mark it so it isn't flagged again.
 
-Reports miss a lot: across the 43 questions here, code checks and my review found 21 issues that no
+Reports miss a lot: across the 43 questions here, code checks and review found 21 issues that no
 report had covered (`bonus_findings.json`).
 
 I'd prove it on one month of attempts, checking every flag by hand, before running it everywhere.

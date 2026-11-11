@@ -8,7 +8,7 @@ each report, whether the question is actually broken, proposes a surgical fix, a
 
 It also writes the student's reply. A faculty console shows the queue, the evidence and a before/after diff.
 
-- **Live console:** LIVE_URL
+- **Live console:** https://acadza-assignment.vercel.app/
 - **Video walkthrough:** VIDEO_URL
 - The original brief: [`docs/assignment-brief.md`](docs/assignment-brief.md). How it was built with AI:
   [`PROMPTS.md`](PROMPTS.md). Product thinking: [`PRODUCT.md`](PRODUCT.md).
