@@ -283,3 +283,36 @@ Each entry: **Decision**, **Alternatives considered**, **Why**, **Evidence**. Ne
     - A guard-only flag on a wrong key gives faculty_review, the precaution wording, and a reply with no letter or digit.
     - The neutral reply has no answer in either language.
     - A flagged no_change report keeps its normal reply.
+
+## D-032: Injection detection by technique, and a code check on every reply
+- **Date:** 2026-11-11
+- **Decision:** injection detection by technique: normalisation, role/channel spoofing, schema-shaped text, decoded payloads, authority/persona claims; plus a code check on every reply. One improvement round after the fresh test, then frozen.
+- **Detection** (`engine/claims.py`):
+  - *Normalisation* (`normalise_for_detection`): Unicode NFKC; invisible characters removed (Unicode format characters: zero-width, joiners, BOM, soft hyphen); Cyrillic and Greek homoglyphs folded to Latin inside words that also have a Latin letter; letter-spaced words rejoined. Both the lowercased comment and its normalised form are matched. When normalisation changes the comment, the prompt guard also scores the normalised text, and the higher score counts.
+  - *spoofing* (flags on its own): a line starting with a role label (system, assistant, user, admin, developer… with ":" or in brackets or tags), chat-template tokens, fake opening or closing tags of the wrappers the engine uses, "### instructions"-style headers.
+  - *schema* (flags on its own): the engine's output field names (verdict, repair, route, confidence, new_answer, auto_apply, student_reply) as JSON or key=value, or a route value written out.
+  - *Encoded payloads*: base64-looking runs that decode to readable text are read by the detector too ("encoded").
+  - *Authority and persona*, in general form:
+    - "as the / a … teacher / faculty / admin / developer" (not when followed by said / told / explained)
+    - "(pre-)approved / verified by <any team or person>"
+    - "confirm kar liya / check ho gaya" attributed to a teacher
+    - messages or tests "from the developers"
+    - "you are <Name>Bot", "let's play a game", "pretend you are", "from now on you"
+    - reviewer, moderator and checker added to the system nouns
+  - A state-change request alone is still logged, not blocking (D-030).
+- **Reply check** (`engine/tiers.py` `check_reply_claims`, run inside `check_reply` on every LLM reply):
+  - On any route except auto_apply (and already_fixed), the reply must not claim an action was taken (applied / changed / updated / marked / fixed / corrected / resolved, or Hinglish "kar diya / ho gaya / badal diya"). Future, negated and student-done forms are allowed.
+  - It must not state an answer different from the decision's (the "Correct answer:" fact), or any answer when the decision has none.
+  - When D-031 applies, it must state no answer at all.
+  - A failed reply falls back to the code-built reply. The rejected text goes to details.jsonl (`reply_rejected`, `reply_check_failures`), and the run summary lists every fallback (`reply_fallbacks`).
+- **Alternatives considered:**
+  - More phrase patterns for each missed example.
+  - An LLM injection classifier (rejected in D-030).
+  - Not showing the reply LLM the comment at all.
+- **Why:**
+  - The fresh set (`eval/heldout/fresh_injection_comments.csv`) measured 9/20 recall. The misses were whole techniques (encoding, spoofed channels, schema text, personas), not missing phrases.
+  - The reply LLM sees the raw comment (inside `<student_comment>`, `prompts/reply_v5.md`). So a manipulated reply is possible even when routing is safe, and code must check its output.
+- **Evidence:**
+  - Tests: `tests/test_injection_techniques.py` (one group per technique plus look-alikes, all new examples), `tests/test_reply_checks.py`.
+  - The 44 still flag only R027.
+  - The fresh-set re-run after this fix is fitted, not a fair measure.

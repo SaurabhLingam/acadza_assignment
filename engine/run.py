@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 
 from . import config
 from .checks import DEFINITE, SIGNAL, build_vocab, parse_question, run_checks
-from .claims import classify
+from .claims import classify, normalise_for_detection
 from .decide import (KEY_OK, KEY_WRONG, TIER_NAMES, TIER_TRIAGE, UNSOUND, OptionVerdict, Signals, confidence,
                      INJECTION_WHY, SolverSig, counts, decide, disputed_items, route_for, same_value, triage_contradicts,
                      value_cand, value_clusters)
@@ -29,7 +29,7 @@ from .edits import code_edit, guard, map_clean_edit, public_edit, value_correcti
 from .llm import BudgetExceeded, Client, LLMError
 from .loader import ROOT, load_questions, load_reports, load_taxonomy
 from .mathexpr import parse_quantity, same_quantity, to_si
-from .tiers import (asked_unit, findings_text, integer_match, run_audit, run_extract, run_guard,
+from .tiers import (asked_unit, check_reply_claims, findings_text, integer_match, run_audit, run_extract, run_guard,
                     run_option_check, run_reply, run_solver, run_triage, run_value_check)
 from .verify import decide as decide_tier0
 
@@ -93,6 +93,15 @@ class Runner:
         # tier 1-2: guard, blind solvers, extraction, audit
         s.guard = self.once(("guard", r.report_id), lambda: run_guard(self.c, r.report_id, r.comment),
                             lambda e: {"score": None, "label": "error", "flag": False, "raw": e[:80]})
+        # D-032: when normalisation changes the comment, the guard also scores the normalised text; the
+        # higher score counts. The original is always scored, so a normalisation miss can only add a flag.
+        norm = normalise_for_detection(r.comment)
+        guard_norm = None
+        if norm.strip() and norm != (r.comment or "").lower():
+            guard_norm = self.once(("guard_norm", r.report_id),
+                                   lambda: run_guard(self.c, f"{r.report_id}:normalised", norm), lambda e: None)
+            if guard_norm and (guard_norm.get("score") or 0) > ((s.guard or {}).get("score") or 0):
+                s.guard = {**guard_norm, "on": "normalised"}
         raw_solver = {}
         for role in ("solver_1", "solver_2"):
             from .decide import SolverSig, excuse_noticed_defect
@@ -172,12 +181,13 @@ class Runner:
                   "disputed": sorted(disputed_items(s)), "key_status": d.key_status, "decided_by": d.decided_by,
                   "basis": d.basis, "notes": d.notes, "agree": d.agree, "against": d.against, "route_why": why,
                   "edit_how": how, "edit_guard_failures": fails, "proposed_edit": public_edit(edit),
-                  "guard": s.guard, "injection_regex": claim.injection, "injection_blocks_auto_apply": s.injection,
+                  "guard": s.guard, "guard_normalised": guard_norm, "injection_regex": claim.injection, "injection_blocks_auto_apply": s.injection,
                   "solvers": [vars(x) for x in s.solvers], "solver_raw": raw_solver, "extract": s.extract,
                   "audit": s.audit, "option_checks": {k: [vars(v) for v in vs] for k, vs in s.option_checks.items()},
                   "value_candidates": s.value_candidates,
                   "triage": s.triage, "triage_contradicts": contradicted, "shadow": shadow,
-                  "settled_tier": settled_tier, "reply_check_failures": reply_fails, "reply_source": reply_src}
+                  "settled_tier": settled_tier, "reply_check_failures": reply_fails, "reply_source": reply_src,
+                  "reply_rejected": self.rejected_reply}
         return {"result": result, "detail": detail}
 
     # ------------------------------------------------------------------ helpers
@@ -522,19 +532,25 @@ class Runner:
 
     # ------------------------------------------------------------------ reply
     def _reply(self, r, claim, d, route, pq, s, live_edit=None):
+        self.rejected_reply = None
         if s.injection and route == "faculty_review":
             # D-031: the answer is not faculty-confirmed yet and the report may be adversarial: state no answer
-            return self._neutral_reply("hinglish" if claim.hinglish else "english"), [], "injection_neutral"
+            text = self._neutral_reply("hinglish" if claim.hinglish else "english")
+            return text, check_reply_claims(text, route, d.verdict or "", "", no_answer=True), "injection_neutral"
         proposed = bool(claim.values or claim.letters) and not s.injection
         info = self._reply_info(claim, d, route, pq, s, live_edit)
         facts = self._facts(claim, d, route, info, proposed)
         lang = "hinglish" if claim.hinglish else "english"
         try:
             text, fails = run_reply(self.c, r, lang, d.verdict or "undecided", route, facts,
-                                    syllabus="syllabus" in claim.categories, proposed_answer=proposed)
+                                    syllabus="syllabus" in claim.categories, proposed_answer=proposed,
+                                    answer=info["answer"])
         except LLMError as e:
             text, fails = "", [f"call failed: {e}"[:120]]
         if fails or not text:
+            # logged: the rejected text and the failed checks go to details.jsonl (reply_rejected,
+            # reply_check_failures) and the run summary lists them (reply_fallbacks)
+            self.rejected_reply = text
             return self._fallback_reply(d, route, lang, info, proposed), fails, "fallback"
         return text, fails, "llm"
 
@@ -876,6 +892,8 @@ def main(argv=None):
         "auto_applied": sum(1 for x in out if x["route"] == "auto_apply"),
         "shadow_early_exit_disagreements": shadow_dis,
         "injection_flags": _guard_stats(details),
+        "reply_fallbacks": {d["reportId"]: d["reply_check_failures"] for d in details
+                            if d.get("reply_source") == "fallback"},
         "calls_by_provider": _provider_stats(client),
         "results_file": str((run_dir / "results.json").relative_to(ROOT)),
     }

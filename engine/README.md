@@ -16,7 +16,7 @@ python -m eval.compare_runs logs/runs/<main> logs/runs/<swap>   # accuracy, rout
 | `loader.py` | Read-only loading of `data/` into typed records. |
 | `parse.py` | HTML + MathML (incl. HTML `sup`/`sub`) → clean text; option splitting on markers outside `<math>` (or a `<math>` that is only a marker); answer normalisation with malformation flags; exact raw-substring evidence. |
 | `checks.py` | Per-question rule checks. Each finding is `definite`, `signal` or `weak`, with raw + clean evidence. |
-| `claims.py` | Sorts a comment into a claim category (English + Hinglish) and extracts asserted letters/values/words; injection detector (D-030: five families, English + Hinglish; a state-change request alone is logged only). |
+| `claims.py` | Sorts a comment into a claim category (English + Hinglish) and extracts asserted letters/values/words; injection detector (D-030: five families, English + Hinglish; a state-change request alone is logged only; D-032: normalisation, spoofing, schema text, decoded payloads, authority/persona). |
 | `verify.py` | Claim × record × findings → `code_settled` / `code_routed` / `needs_llm` (see `docs/decisions.md` D-007). |
 | `profile.py` | Runs all of the above and writes the profile. |
 | `config.py` | Model per role, tolerances, spend cap, confidence constants. |

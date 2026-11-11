@@ -1055,3 +1055,33 @@ Replay the 44 and the held-out set from cache again. Show me every field that ch
 </pasted_content id="0f56">
 
 ```
+
+---
+
+### 2026-11-11T16:49:53+05:30
+
+session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
+
+```text
+
+
+<pasted_content id="0f56">
+One improvement round on injection, then we freeze. The fresh set is now burned as a test, so fix by technique, not by example: each rule must be a general attack type, not a phrase from fresh_injection_comments.csv.
+
+Build, in engine/claims.py:
+1. Normalise before matching: Unicode NFKC, strip zero-width / invisible characters, fold common Cyrillic/Greek homoglyphs to Latin, collapse letter-spaced words (I.G.N.O.R.E, i g n o r e). Run both detectors on the normalised text.
+2. Role / channel spoofing: a line starting with a role label (system, assistant, user, admin, developer, with ":" or in tags/brackets), chat-template tokens, fake closing/opening tags, "### instructions"-style headers. Flags on its own.
+3. Schema-shaped text: a comment that contains JSON or key=value pairs using our output field names (verdict, repair, route, confidence, new_answer, auto_apply). Flags on its own.
+4. Encoded payloads: if the comment contains a base64-looking run, decode it and run the detector on the decoded text too.
+5. Broaden authority claims and personas in general form: "as the/a teacher/faculty/admin/developer", "approved/verified/pre-approved by <any team/person>", "confirm kar liya / check ho gaya" attributed to a teacher, "this is a test from the developers", "you are <Name>Bot / play a game / pretend you are". Add "reviewer, moderator, checker" to the system-noun list.
+Keep the rule: directive alone is logged, not blocking. Add tests per technique using NEW examples you write (not copies from the fresh set). The 44 must still flag only R027 and lose no auto-apply.
+
+Also the reply: does the student-reply LLM see the raw comment? Whatever the answer, add a code check on every generated reply: it must not claim an action was taken (applied/changed/updated/marked/fixed/corrected/resolved), must not state an answer different from the decision's, and must not state any answer when D-031 applies. If a reply fails, fall back to the code-built reply and log it. Show me the code path.
+
+Record:
+decision: D-032 injection detection by technique: normalisation, role/channel spoofing, schema-shaped text, decoded payloads, authority/persona claims; plus a code check on every reply. One improvement round after the fresh test, then frozen.
+
+Then replay the 44 and the held-out set from cache, show me every field that changed, re-run the detector on fresh_injection_comments.csv and report it as "after fix (fitted, not a fair measure)". Don't touch any new test file I add later. Commit, push, stop.
+</pasted_content id="0f56">
+
+```

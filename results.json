@@ -221,7 +221,7 @@
     "route": "faculty_review",
     "confidence": 0.2,
     "evidence": "Key: 20 cm. gpt-oss-120b (blind solve): 10 cm. deepseek-v4-flash (blind solve): 20 cm. Stored solution (gpt-oss-20b) ends at 40 cm. Triage (gpt-oss-120b): The stored solution ends with \"a = 40 cm\" while the answer key and independent solvers indicate the correct side length is 20 cm. Sent to faculty: evidence does not meet the auto-apply bar; no edit that passes the guards: solution_fix auto-applies only as a final-value correction that every signal backs; triage contradicts the signals.",
-    "student_reply": "Thanks for checking carefully; the correct answer is 20 cm, because the distance should be half the value given in the solution due to the error in the worked steps. A teacher will review and fix the question."
+    "student_reply": "Thanks, you were right to flag this: there is a problem with this question. A teacher will review and fix it."
   },
   {
     "reportId": "R017",
@@ -353,7 +353,7 @@
     "route": "faculty_review",
     "confidence": 0.95,
     "evidence": "Code check: Syllabus claims are faculty-only (auto: false); question stays live meanwhile. Sent to faculty: repair is faculty-only (auto: false).",
-    "student_reply": "Thanks for pointing that out. The question is currently marked as out of syllabus and will be reviewed by a teacher."
+    "student_reply": "Thanks for flagging this. A teacher will check whether it is in the syllabus; the question stays available meanwhile."
   },
   {
     "reportId": "R027",

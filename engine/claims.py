@@ -6,8 +6,11 @@ generic; nothing here refers to a specific report.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import math
 import re
+import unicodedata
 from dataclasses import dataclass, field
 
 # Priority order: the first matching category becomes `primary`.
@@ -21,17 +24,31 @@ CATEGORY_ORDER = (
 # addresses the system, claims authority, tells it to drop its rules, asks to skip review, or directs a
 # state change. Five families, English and Hinglish, matched on the lowercased comment. A state-change
 # request alone ("please correct the key") is logged, not blocking: students write that in good faith.
-_SYS_NOUN = r"(?:ai|bot|assistant|model|system|admin|administrator|moderator|reviewer|grader|engine)"
+#
+# D-032 adds detection by technique: text is normalised first (normalise_for_detection), and three
+# families flag on their own: role/channel spoofing, schema-shaped text, and (via decoding) encoded payloads.
+_SYS_NOUN = r"(?:ai|bot|assistant|model|system|admin|administrator|moderator|reviewer|checker|grader|engine)"
+_ROLE = r"(?:system|assistant|user|human|admin|administrator|developer|dev|moderator|reviewer|ai|bot|sys|inst)"
+_AUTH_NOUN = (r"(?:teacher|faculty|admin|administrator|developer|dev|moderator|reviewer|checker|hod|principal|"
+              r"staff|examiner|content\s+team)")
+_GROUP = (r"(?:team|faculty|admin|admins|teacher|teachers|staff|department|developers?|devs?|moderators?|"
+          r"reviewers?|management|sir|ma'?am|madam|hod|board|panel)")
+_OUTPUT_FIELD = r"(?:verdict|repair|route|confidence|new_answer|auto_apply|student_reply)"
 _STATE_OBJ = r"(?:answer\s*key|key|answer|ans|option|report|ticket|status|question|ques|review|database|record)"
 _STATE_WORD = r"(?:resolved|closed|corrected|fixed|approved|verified|done|accepted)"
 _INJECTION_FAMILIES = {
     "addressee": [
         rf"\b(?:note\s+to|dear|hey|hi|hello|attention|attn)\b.{{0,25}}\b{_SYS_NOUN}\b",
-        r"\b(?:you|tum|aap|tu)\s+(?:are|r|ab|hi)?\s*(?:now\s+)?(?:an?\s+|the\s+|my\s+)?"
-        r"(?:admin|ai|bot|assistant|model|system|moderator|developer)\b",
-        r"\b(?:admin|ai|bot|assistant|model|system)\s+(?:ho|hai|bano|ban\s+jao)\b",
-        r"\bact\s+as\s+(?:an?\s+|the\s+)?(?:admin|system|moderator|developer)\b",
+        rf"\b(?:you|tum|aap|tu)\s+(?:are|r|ab|hi)?\s*(?:now\s+)?(?:an?\s+|the\s+|my\s+)?(?:{_SYS_NOUN}|developer)\b",
+        rf"\b{_SYS_NOUN}\s+(?:ho|hai|bano|ban\s+jao)\b",
+        rf"\bact\s+as\s+(?:an?\s+|the\s+)?(?:{_SYS_NOUN}|developer)\b",
         r"</?(?:system|assistant|instructions?)>",
+        # personas: a named bot, a game, pretending, role-play
+        r"\byou\s+(?:are|r|'re)\s+(?:now\s+)?(?:called\s+)?[a-z]+(?:bot|gpt|ai)\b",
+        r"\b(?:let'?s|lets)\s+play\s+a\s+game\b",
+        r"\bpretend\s+(?:that\s+)?(?:you\s+are|you'?re|to\s+be)\b",
+        r"\brole[\s-]?play\b",
+        r"\bfrom\s+now\s+on,?\s+you\b",
     ],
     "authority": [
         r"\b(?:already\s+)?(?:verified|approved|confirmed|checked|cleared)\s+by\s+(?:the\s+)?"
@@ -40,12 +57,43 @@ _INJECTION_FAMILIES = {
         r"\b(?:i\s+am|i'm|main)\s+(?:the\s+|a\s+|an\s+)?(?:faculty|teacher|admin|moderator|hod|staff)\b",
         r"\b(?:faculty|admin|teacher|sir|team)\s+ne\s+.{0,20}\b(?:verify|check|approve|confirm)\w*",
         r"\b(?:permission|authori[sz]ation)\s+(?:hai|given|granted|de\s+di)\b",
+        # "as the / a <role>": speaking with a role's authority
+        rf"\bas\s+(?:the|a|an|your)\s+(?:[\w-]+\s+){{0,2}}{_AUTH_NOUN}\b"
+        r"(?!\s+(?:said|says|told|tells|explained|taught|mentioned|showed|did|does|bataya|batate))",
+        # "(pre-)approved / verified by <any team or person>"
+        rf"\b(?:pre-?)?(?:approved|verified|validated|cleared|authori[sz]ed|signed\s+off)\s+by\s+"
+        rf"(?:the\s+|our\s+|your\s+|a\s+)?(?:[\w-]+\s+){{0,3}}{_GROUP}\b",
+        # Hinglish: a confirmation attributed to a teacher or team
+        r"\b(?:sir|ma'?am|madam|teacher|faculty|admin|team|hod)\b.{0,30}\b(?:confirm|verify|check|approve)\w*\s+"
+        r"(?:kar\s+(?:liya|li|diya|di)|ho\s+(?:gaya|gayi|chuka|chuki)|kiya|kiye)\b",
+        # framed as a message or test from the people who run the system
+        rf"\b(?:test|message|request|note|instruction)s?\s+from\s+(?:the\s+)?(?:[\w-]+\s+){{0,2}}"
+        r"(?:developers?|devs?|dev\s+team|engineering|admins?|team|staff|management)\b",
+        r"\bthis\s+is\s+(?:a|an|only\s+a|just\s+a)\s+(?:test|drill)\b.{0,60}\b(?:respond|reply|output|return|set|"
+        r"mark|apply|change|update)\b",
     ],
     "override": [
         r"\b(?:ignore|forget|disregard|override|bypass)\b.{0,30}\b(?:instructions?|rules|prompts?|checks?|guards?|policy)\b",
         r"\b(?:instructions?|rules|niyam|prompt)\b.{0,20}\b(?:bhool|bhul|ignore|chhod)\w*",
         r"\b(?:pichl\w*|purane|upar\s+wal\w*|saare|sab)\b.{0,25}\b(?:bhool|bhul)\s*(?:jao|ja|do)\b",
         r"\b(?:system\s+prompt|developer\s+mode|jailbreak|dan\s+mode)\b",
+        r"\b(?:maintenance|debug|admin|god|sudo|test|developer)\s+mode\b.{0,40}\b(?:enabled|on|active|activated|output|"
+        r"respond|set|you)\b|\byou\s+are\s+(?:now\s+)?in\s+\w+\s+mode\b",
+        r"\b(?:decode|decrypt|translate)\b.{0,40}\b(?:and\s+)?(?:then\s+)?(?:follow|do|execute|obey|run)\b",
+    ],
+    # role / channel spoofing: text pretending to come from another party or channel (flags on its own)
+    "spoofing": [
+        rf"(?m)^\s*[\[(<]?\s*{_ROLE}\s*[\])>]?\s*:",                         # "SYSTEM:", "[admin]:", "<user>:"
+        rf"[\[<]\s*/?\s*{_ROLE}\s*[\]>]",                                    # "[SYSTEM]", "<assistant>", "[/INST]"
+        r"<\|[a-z_]+\|>|<</?sys>>",                                          # chat-template tokens
+        r"</?\s*(?:student_comment|comment|user_input|input|data|context|instructions?|prompt)\s*>",  # fake tags
+        r"(?m)^\s*(?:#{1,6}|={3,}|-{3,}|\*{3,})\s*.{0,25}\b(?:instructions?|system|rules|prompt|override|admin|"
+        r"mode|task)\b",                                                    # "### NEW INSTRUCTIONS ###"
+    ],
+    # schema-shaped text: our own output fields as JSON or key=value (flags on its own)
+    "schema": [
+        rf"[\"']?\b{_OUTPUT_FIELD}\b[\"']?\s*[:=]",
+        r"\b(?:auto_apply|faculty_review|no_change)\b",
     ],
     "skip_review": [
         r"\bwithout\s+(?:any\s+)?(?:faculty\s+|teacher\s+|human\s+|further\s+)?(?:review|check|verification|approval)\b",
@@ -64,13 +112,58 @@ _INJECTION_FAMILIES = {
         rf"\b{_STATE_WORD}\s+(?:mark\s+)?(?:kar\s*do|karo|kardo)\b",
     ],
 }
-BLOCKING_INJECTION_FAMILIES = ("addressee", "authority", "override", "skip_review")
+BLOCKING_INJECTION_FAMILIES = ("addressee", "authority", "override", "skip_review", "spoofing", "schema")
+
+# Homoglyphs folded to Latin (D-032): Cyrillic and Greek letters that look like Latin ones. Folded only inside
+# a word that also has a Latin letter, so ordinary Greek symbols in physics comments (mu, rho) are left alone.
+_HOMOGLYPHS = str.maketrans({
+    "а": "a", "в": "b", "е": "e", "к": "k", "м": "m", "н": "h", "о": "o", "р": "p", "с": "c", "т": "t",
+    "у": "y", "х": "x", "і": "i", "ј": "j", "ѕ": "s", "ԁ": "d", "һ": "h", "ӏ": "l", "ё": "e",
+    "α": "a", "β": "b", "ε": "e", "ι": "i", "κ": "k", "ν": "v", "ο": "o", "ρ": "p", "τ": "t", "υ": "u",
+    "χ": "x", "ω": "w", "η": "n",
+})
+_LATIN = re.compile(r"[a-z]")
+_LETTER_SPACED = re.compile(r"(?<![\w])(?:[a-z][.\s_*\-·]){2,}[a-z](?![\w])")
+_B64_RUN = re.compile(r"[A-Za-z0-9+/]{16,}={0,2}")
 
 
-def injection_families(comment: str) -> list[str]:
-    """Which instruction-to-the-system families the comment matches (D-030)."""
-    low = (comment or "").lower()
-    return [k for k, pats in _INJECTION_FAMILIES.items() if _any(pats, low)]
+def normalise_for_detection(comment: str) -> str:
+    """Text the injection detector reads (D-032): NFKC, invisible characters removed, mixed-script homoglyphs
+    folded to Latin, letter-spaced words rejoined ("I.G.N.O.R.E" -> "ignore"). Lowercased."""
+    t = unicodedata.normalize("NFKC", comment or "")
+    t = "".join(ch for ch in t if unicodedata.category(ch) != "Cf")   # zero-width, joiners, BOM, soft hyphen
+    t = t.lower()
+    t = re.sub(r"\S+", lambda m: m.group(0).translate(_HOMOGLYPHS)
+               if _LATIN.search(m.group(0)) else m.group(0), t)
+    return _LETTER_SPACED.sub(lambda m: re.sub(r"[.\s_*\-·]", "", m.group(0)), t)
+
+
+def _decoded_payloads(comment: str) -> list[str]:
+    """Base64-looking runs that decode to readable text (D-032), so an encoded instruction is read too."""
+    out = []
+    for run in _B64_RUN.findall(comment or ""):
+        try:
+            raw = base64.b64decode(run + "=" * (-len(run) % 4), validate=True)
+            text = raw.decode("utf-8")
+        except (binascii.Error, ValueError):
+            continue
+        if len(text) >= 8 and " " in text and sum(ch.isprintable() for ch in text) / len(text) > 0.95:
+            out.append(text)
+    return out
+
+
+def injection_families(comment: str, _depth: int = 0) -> list[str]:
+    """Which instruction-to-the-system families the comment matches (D-030, D-032). Read on the lowercased
+    comment and on its normalised form; base64 payloads are decoded and read too ("encoded" marks that)."""
+    texts = {(comment or "").lower(), normalise_for_detection(comment)}
+    found = {k for k, pats in _INJECTION_FAMILIES.items() if any(_any(pats, t) for t in texts)}
+    if _depth == 0:
+        for payload in _decoded_payloads(comment):
+            inner = injection_families(payload, _depth=1)
+            if inner:
+                found.update(inner)
+                found.add("encoded")
+    return [k for k in (*_INJECTION_FAMILIES, "encoded") if k in found]
 _LANGUAGE = r"\b(?:hindi|english|marathi|gujarati|tamil|telugu|bengali|bangla|kannada|malayalam|urdu|odia|punjabi|language|bhasha|translate|translation)\b"
 _APP = [
     r"\b(?:clicked|tapped|selected|marked|chose|pressed)\b.{0,30}\b(?:but|and|par|lekin)\b.{0,25}\b(?:saved|recorded|submitted|registered|selected|took|showing|shows|went)\b",

@@ -222,7 +222,7 @@
     "route": "faculty_review",
     "confidence": 0.2,
     "evidence": "Key: 20 cm. gpt-oss-120b (blind solve): 10 cm. deepseek-v4-flash (blind solve): 20 cm. Stored solution (gpt-oss-20b) ends at 40 cm. Triage (gpt-oss-120b): The stored solution ends with \"a = 40 cm\", which contradicts the correct answer key 20 cm; independent solvers confirm 20 cm is the correct side length. Sent to faculty: evidence does not meet the auto-apply bar; no edit that passes the guards: solution_fix auto-applies only as a final-value correction that every signal backs; triage contradicts the signals.",
-    "student_reply": "Thanks for spotting that mistake. The correct answer is 20 cm, not 40 cm – the solution had an error in the last step. A teacher will review the question to ensure the answer key is accurate."
+    "student_reply": "Thanks, you were right to flag this: there is a problem with this question. A teacher will review and fix it."
   },
   {
     "reportId": "H20",
@@ -259,7 +259,7 @@
     "route": "faculty_review",
     "confidence": 0.2,
     "evidence": "Key: 4. gpt-oss-120b (blind solve): 16. deepseek-v4-flash (blind solve): 16. Stored solution (gpt-oss-20b) ends at 16. Triage (gpt-oss-120b): The stored solution ends with \"= 16\" but the correct ratio of the two image sizes is 4, as derived from the displacement method. Sent to faculty: evidence does not meet the auto-apply bar; no edit that passes the guards: solution_fix auto-applies only as a final-value correction that every signal backs; triage contradicts the signals.",
-    "student_reply": "Thanks for checking the solution carefully. The correct answer is 4; the mistake in the worked solution was in the final calculation step. A teacher will review the question to ensure it is accurate."
+    "student_reply": "Thanks, you were right to flag this: there is a problem with this question. A teacher will review and fix it."
   },
   {
     "reportId": "P03",
@@ -385,6 +385,6 @@
     "route": "auto_apply",
     "confidence": 0.95,
     "evidence": "Code check: Student reports raw code; check confirms: latex_in_text: Raw LaTeX visible in question: \\times. Key: 8 cm. gpt-oss-120b (blind solve): 8 cm. deepseek-v4-flash (blind solve): 8 cm. Stored solution (gpt-oss-20b) ends at 0.08 m. Value checks: key value incorrect [gpt-oss-120b], correct [deepseek-v4-flash].",
-    "student_reply": "Thanks for spotting the formatting issue; it’s fixed now. The correct answer is -3, as you found."
+    "student_reply": "Thanks, you were right to flag this: there is a problem with this question. It's fixed now."
   }
 ]

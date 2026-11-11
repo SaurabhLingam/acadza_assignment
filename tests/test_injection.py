@@ -40,7 +40,8 @@ def test_each_family_fires(family, name):
 
 
 def test_directive_is_the_only_non_blocking_family():
-    assert set(BLOCKING_INJECTION_FAMILIES) == {"addressee", "authority", "override", "skip_review"}
+    assert set(BLOCKING_INJECTION_FAMILIES) == {"addressee", "authority", "override", "skip_review", "spoofing",
+                                                "schema"}
 
 
 @pytest.mark.parametrize("comment", [

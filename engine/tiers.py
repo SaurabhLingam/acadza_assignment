@@ -242,6 +242,19 @@ def run_triage(client: Client, pq: ParsedQuestion, report, task: str, taxonomy: 
 
 _INTERNAL = re.compile(r"\b(verdict|repair|taxonomy|faculty_review|auto_apply|no_change|signal|triage)\b", re.I)
 _CLAIMS_FIX = re.compile(r"\b(fixed|corrected|updated|changed|ho gaya|kar diya)\b", re.I)
+# D-032 reply checks
+_ACTION_DONE = re.compile(r"\b(?:applied|changed|updated|marked|fixed|corrected|resolved|replaced|approved|edited)\b"
+                          r"|\b(?:kar|ho)\s+(?:diya|di|gaya|gayi|chuka|chuki)\b|\bbadal\s+(?:diya|di|gaya|gayi)\b",
+                          re.I)
+_ANSWER_CLAIM_LETTER = [
+    re.compile(r"\b(?i:correct|right|sahi|actual|real)\s+(?i:answer|option|ans|jawab)\s*(?i:is|hai|=|:|would\s+be|"
+               r"should\s+be|will\s+be)?\s*(?i:option\s*)?\(?\s*([A-E])\s*\)?(?![\w])"),
+    re.compile(r"\(\s*([A-E])\s*\)\s*(?i:is|hai)\s+(?i:the\s+)?(?i:correct|right|sahi)\b"),
+    re.compile(r"\b(?i:answer|ans|jawab)\s+(?i:is|hai)\s+(?i:option\s*)?\(\s*([A-E])\s*\)"),
+    re.compile(r"\b(?i:it'?s|it\s+is)\s+\(\s*([A-E])\s*\)"),
+]
+_ANSWER_CLAIM_VALUE = re.compile(r"\b(?:correct|right|sahi|actual)\s+(?:answer|value|ans|jawab)\s*(?:is|hai|=|:)?\s*"
+                                 r"(-?\d+(?:\.\d+)?)", re.I)
 
 
 _REMOVED = re.compile(r"\b(remov\w*|delet\w*|hidden|hide|taken down|hata\w*)\b", re.I)
@@ -266,10 +279,63 @@ def _numbers(text: str) -> list[float]:
     return [float(x) for x in _NUM.findall(text or "")]
 
 
-def check_reply(text: str, route: str, syllabus: bool = False, *, language: str = "english", facts: str = "",
-                comment: str = "", proposed_answer: bool = True, verdict: str = "") -> list[str]:
-    """Code checks on the student reply. Any failure -> the caller uses a code-built template instead."""
+def _action_claims(text: str) -> list[str]:
+    """Past-tense claims that something was done to the question or report. Future, modal and negated forms
+    ("will be corrected", "nothing has changed") and the student's own actions ("you marked B") don't count."""
+    out = []
+    for m in _ACTION_DONE.finditer(text or ""):
+        before = (text or "")[max(0, m.start() - 30):m.start()].lower()
+        if re.search(r"\b(?:will|'ll|to|would|should|can|could|may|might|must)\s+(?:not\s+)?(?:be\s+|get\s+|have\s+"
+                     r"been\s+|being\s+)?$", before):
+            continue
+        if re.search(r"\b(?:not|never|no|nothing|hasn't|haven't|isn't|wasn't|nahi|nahin)\b[^.!?]*$", before):
+            continue
+        if re.search(r"\b(?:you|aapne|tumne|aap\s+ne|tum\s+ne)\b[^.!?,;]{0,25}$", before):
+            continue
+        if re.search(r"\b(?:teacher|faculty|sir|ma'?am)\s+(?:will|karenge|karengi)\b", before):
+            continue
+        out.append(m.group(0))
+    return out
+
+
+def _claimed_answers(text: str) -> tuple[set, list[float]]:
+    """Option letters and values the reply asserts are the correct answer."""
+    letters = {m.group(1) for p in _ANSWER_CLAIM_LETTER for m in p.finditer(text or "")}
+    values = [float(m.group(1)) for m in _ANSWER_CLAIM_VALUE.finditer(text or "")]
+    return letters, values
+
+
+def check_reply_claims(text: str, route: str, verdict: str, answer: str, no_answer: bool = False) -> list[str]:
+    """D-032 code check on every reply: no claimed action the route did not take, no answer other than the
+    decision's, and no answer at all when D-031 applies (flagged report sent to faculty)."""
     fails = []
+    if route != "auto_apply" and verdict != "already_fixed":
+        done = _action_claims(text)
+        if done:
+            fails.append(f"claims an action was taken ({', '.join(dict.fromkeys(done))}) on route {route}")
+    if no_answer:
+        if re.search(r"\(\s*[A-E]\s*\)|\boption\s+[A-E]\b|\d", text or ""):
+            fails.append("states an answer, but this flagged report is with faculty (D-031)")
+        return fails
+    letters, values = _claimed_answers(text)
+    want_letters = set(re.findall(r"\(([A-E])\)", answer or ""))
+    want_values = _numbers(answer)   # an integer key, or the values in the keyed option's text ("(A) 50 V")
+    bad_letters = letters - want_letters
+    bad_values = [v for v in values if not any(abs(v - w) <= 1e-6 * max(1.0, abs(w)) for w in want_values)]
+    if bad_letters or bad_values:
+        fails.append(f"states answer {sorted(bad_letters) or bad_values[:2]}, not the decision's "
+                     f"({answer or 'none'})")
+    return fails
+
+
+def check_reply(text: str, route: str, syllabus: bool = False, *, language: str = "english", facts: str = "",
+                comment: str = "", proposed_answer: bool = True, verdict: str = "", answer: str = "",
+                no_answer: bool = False) -> list[str]:
+    """Code checks on the student reply. Any failure -> the caller uses a code-built template instead."""
+    if not answer and facts:   # the decision's answer, as the facts state it
+        m = re.search(r"^Correct answer: (.+)$", facts, re.M)
+        answer = m.group(1) if m else ""
+    fails = check_reply_claims(text, route, verdict, answer, no_answer)
     if syllabus and _REMOVED.search(text or ""):
         fails.append("syllabus reply mentions removal (the question stays live)")
     if facts:
@@ -308,14 +374,14 @@ def check_reply(text: str, route: str, syllabus: bool = False, *, language: str 
 
 
 def run_reply(client: Client, report, language: str, verdict: str, route: str, facts: str,
-              syllabus: bool = False, proposed_answer: bool = True) -> tuple[str, list]:
+              syllabus: bool = False, proposed_answer: bool = True, answer: str = "") -> tuple[str, list]:
     p = prompt_for("reply")
     msgs = p.render(comment=report.comment or "(empty)", language=language, verdict=verdict, route=route,
                     outcome_facts=facts)
     r = client.call("reply", p, msgs, stage="reply", tier=4, subject=report.report_id, temperature=0.3)
     text = str((r.data or {}).get("student_reply") or "").strip()
     return text, check_reply(text, route, syllabus, language=language, facts=facts, comment=report.comment or "",
-                             proposed_answer=proposed_answer, verdict=verdict)
+                             proposed_answer=proposed_answer, verdict=verdict, answer=answer)
 
 
 def findings_text(findings) -> str:
