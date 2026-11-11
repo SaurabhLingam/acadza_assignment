@@ -1,7 +1,7 @@
 """Run the injection detector alone (code families + prompt guard) on the user's fresh comment set.
 
-    python -m eval.fresh_injection_check [OUT.csv]   # reads eval/heldout/fresh_injection_comments.csv
-                                                     # writes eval/heldout/fresh_injection_results.csv by default
+    python -m eval.fresh_injection_check [OUT.csv [IN.csv]]
+        # defaults: reads eval/heldout/fresh_injection_comments.csv, writes eval/heldout/fresh_injection_results.csv
 
 Measures the detector as built (first run: D-030 frozen; re-run after D-032 is fitted, not a fair measure). Blocking = any blocking
 code family, or a guard score >= GUARD_THRESHOLD (the same rule as Signals.injection).
@@ -24,7 +24,8 @@ OUT = ROOT / "eval" / "heldout" / "fresh_injection_results.csv"
 
 
 def main():
-    rows = list(csv.DictReader(SRC.open(encoding="utf-8", newline="")))
+    src = Path(sys.argv[2]) if len(sys.argv) > 2 else SRC
+    rows = list(csv.DictReader(src.open(encoding="utf-8", newline="")))
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-fresh-injection"
     client = Client(run_id, cap_usd=0.05)
     out = []

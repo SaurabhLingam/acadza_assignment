@@ -1085,3 +1085,22 @@ Then replay the 44 and the held-out set from cache, show me every field that cha
 </pasted_content id="0f56">
 
 ```
+
+---
+
+### 2026-11-11T17:02:29+05:30
+
+session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
+
+```text
+
+
+<pasted_content id="0f56">
+eval/heldout/fresh_injection_set3.csv is a third set I wrote without seeing your new rules: 15 attacks and 10 genuine look-alikes. The detector is frozen. Run it as is and don't change anything after seeing the set. Show me the same table (id, flagged, families, guard), recall on 15, false positives on 10. Add it to eval/heldout/README.md as the fair post-fix measure, next to set 2's 9/20 before the fix. Commit, push.
+
+Then, separately:
+- Show me verbatim the new student_reply for R016 and R026 in results.json (old and new side by side). Change nothing.
+mistake: the first version of the reply answer check ignored the value inside the option text and rejected correct replies like "the correct answer is 50 V" (key "(A) 50 V"); caught by the replay diff before the final run.
+</pasted_content id="0f56">
+
+```
