@@ -1,4 +1,4 @@
-/* One accent. Red/green only for diffs and pass/fail marks. */
+/* Monochrome with one calm blue for links and focus. Red/green only for diffs and pass/fail marks. */
 :root,
 :root[data-theme="dark"] {
   --bg: #0f1012;
@@ -10,9 +10,11 @@
   --text-2: #b5b8be;
   --muted: #858991;
   --faint: #5c6068;
-  --accent: #8f91f8;
-  --accent-ink: #0f1012;
-  --accent-soft: rgba(143, 145, 248, 0.14);
+  --primary: #ececee;
+  --primary-ink: #111214;
+  --link: #5b9bf8;
+  --select: rgba(255, 255, 255, 0.075);
+  --flag: rgba(255, 255, 255, 0.1);
   --pass: #4cbd8d;
   --fail: #ee736d;
   --ins: rgba(76, 189, 141, 0.2);
@@ -33,9 +35,11 @@
   --text-2: #3f4248;
   --muted: #6d7179;
   --faint: #a0a3aa;
-  --accent: #4b4bd6;
-  --accent-ink: #ffffff;
-  --accent-soft: rgba(75, 75, 214, 0.1);
+  --primary: #18191c;
+  --primary-ink: #f7f7f5;
+  --link: #2563eb;
+  --select: rgba(20, 20, 30, 0.06);
+  --flag: rgba(20, 20, 30, 0.08);
   --pass: #17895a;
   --fail: #cc3c36;
   --ins: rgba(23, 137, 90, 0.15);
@@ -55,14 +59,14 @@ body {
   -webkit-font-smoothing: antialiased; letter-spacing: -0.004em;
 }
 button, input, textarea { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 4px; }
 .mono, .id, kbd, pre { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
 .id { font-size: 0.86em; color: var(--muted); }
 .muted { color: var(--muted); }
 .small { font-size: 12.5px; }
 .boot { padding: 48px; color: var(--muted); }
 
-.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; }
+.link { background: none; border: 0; padding: 0; color: var(--link); cursor: pointer; }
 .link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .kbd {
   display: inline-block; min-width: 18px; height: 18px; padding: 0 4px; margin-left: 2px; line-height: 16px;
@@ -75,8 +79,9 @@ button, input, textarea { font: inherit; color: inherit; }
 }
 .btn:hover:not(:disabled) { border-color: var(--faint); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-.btn.primary .kbd { background: transparent; color: inherit; border-color: color-mix(in srgb, var(--accent-ink) 35%, transparent); }
+.btn.primary { background: var(--primary); color: var(--primary-ink); border-color: transparent; }
+.btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, var(--bg)); border-color: transparent; }
+.btn.primary .kbd { background: transparent; color: inherit; border-color: color-mix(in srgb, var(--primary-ink) 35%, transparent); }
 .icon { width: 30px; height: 30px; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
 .icon:hover { background: var(--raise); color: var(--text); }
 
@@ -96,7 +101,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .top .note { color: var(--faint); font-size: 12.5px; }
 .progress { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--text-2); font-size: 13px; white-space: nowrap; }
 .progress .bar { width: 96px; height: 3px; background: var(--line-2); border-radius: 3px; overflow: hidden; }
-.progress .bar > span { display: block; height: 100%; background: var(--accent); }
+.progress .bar > span { display: block; height: 100%; background: var(--text-2); }
 
 /* ------------------------------------------------------------------ queue */
 .queue { grid-area: queue; display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--surface); }
@@ -111,14 +116,14 @@ button, input, textarea { font: inherit; color: inherit; }
   border: 1px solid var(--line-2); border-radius: 8px; box-shadow: var(--shadow);
 }
 .menu button { display: flex; justify-content: space-between; width: 100%; background: none; border: 0; padding: 7px 10px; border-radius: 5px; cursor: pointer; text-align: left; }
-.menu button:hover, .menu button.on { background: var(--accent-soft); }
+.menu button:hover, .menu button.on { background: var(--select); }
 .rows { list-style: none; margin: 0; padding: 4px; overflow-y: auto; flex: 1; }
 .row {
   display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left; background: none; border: 0;
   padding: 8px 10px; border-radius: 7px; cursor: pointer;
 }
 .row:hover { background: var(--raise); }
-.row.on { background: var(--accent-soft); }
+.row.on { background: var(--select); box-shadow: inset 2px 0 0 var(--text); }
 .row.done { opacity: 0.55; }
 .row-body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .row-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -127,8 +132,8 @@ button, input, textarea { font: inherit; color: inherit; }
 .row-n { font-variant-numeric: tabular-nums; }
 .row-n::before { content: "● "; font-size: 8px; vertical-align: 2px; color: var(--faint); }
 .dot { flex: none; width: 8px; height: 8px; margin-top: 7px; border-radius: 50%; }
-.dot.t3 { background: var(--accent); }
-.dot.t2 { border: 2px solid var(--accent); }
+.dot.t3 { background: var(--text); }
+.dot.t2 { border: 2px solid var(--text-2); }
 .dot.t1 { background: var(--faint); }
 .dot.t0 { border: 1.5px solid var(--faint); }
 .tick { flex: none; width: 8px; margin-top: 1px; color: var(--pass); font-size: 12px; }
@@ -141,8 +146,8 @@ button, input, textarea { font: inherit; color: inherit; }
 .context .sep { color: var(--faint); }
 .context .status { margin-left: auto; color: var(--faint); }
 .tier { color: var(--text-2); font-weight: 500; }
-.tier-3 { color: var(--accent); }
-.decided { margin: 12px 0 0; padding: 7px 11px; border-radius: 7px; background: var(--accent-soft); color: var(--text-2); font-size: 13px; }
+.tier-3 { color: var(--text); font-weight: 600; }
+.decided { margin: 12px 0 0; padding: 7px 11px; border-radius: 7px; background: var(--select); color: var(--text-2); font-size: 13px; }
 .sentence { font-size: 23px; line-height: 1.35; font-weight: 600; letter-spacing: -0.017em; margin: 14px 0 10px; text-wrap: pretty; }
 .sure { margin: 0; color: var(--text-2); font-size: 14.5px; text-wrap: pretty; }
 .why { margin: 8px 0 0; color: var(--faint); font-size: 12.5px; }
@@ -195,15 +200,15 @@ button, input, textarea { font: inherit; color: inherit; }
 .prose .caret { display: inline-block; width: 2px; height: 1.05em; vertical-align: -0.15em; margin: 0 2px; }
 .prose u.caret { background: var(--pass); }
 .prose s.caret { background: var(--fail); }
-.prose .flag { text-decoration: underline 2px var(--accent); text-underline-offset: 4px; background: var(--accent-soft); border-radius: 3px; }
-.prose mrow.flag { background: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent-soft); }
+.prose .flag { text-decoration: underline 2px var(--muted); text-underline-offset: 4px; background: var(--flag); border-radius: 3px; }
+.prose mrow.flag { background: var(--flag); box-shadow: 0 0 0 2px var(--flag); }
 .opt-tag {
   display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 4px; font: 600 10px/17px Inter, sans-serif;
   letter-spacing: 0.06em; vertical-align: 2px; border: 1px solid var(--line-2); color: var(--muted);
 }
-.opt-tag.tag-key { border-color: var(--accent); color: var(--accent); }
+.opt-tag.tag-key { border-color: transparent; background: var(--primary); color: var(--primary-ink); }
 .opt-tag.tag-new { border-color: transparent; background: var(--ins); color: var(--pass); }
-.opt-tag.tag-old { border-color: transparent; background: var(--del); color: var(--fail); text-decoration: line-through; }
+.opt-tag.tag-old { border-color: transparent; background: var(--del); color: var(--fail); }
 
 .sbs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .sbs > div { min-width: 0; }
@@ -258,7 +263,7 @@ button, input, textarea { font: inherit; color: inherit; }
 /* ------------------------------------------------------------------ empty state */
 .empty { max-width: 520px; margin: 14vh auto 0; text-align: center; padding: 0 24px; }
 .empty h1 { font-size: 22px; margin: 8px 0; letter-spacing: -0.015em; }
-.empty-mark { margin: 0; width: 44px; height: 44px; line-height: 44px; border-radius: 50%; margin-inline: auto; background: var(--accent-soft); color: var(--accent); font-size: 20px; }
+.empty-mark { margin: 0; width: 44px; height: 44px; line-height: 44px; border-radius: 50%; margin-inline: auto; background: var(--select); color: var(--text); font-size: 20px; }
 .tally { list-style: none; padding: 0; margin: 18px 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 18px; color: var(--text-2); }
 
 /* ------------------------------------------------------------------ dialogs */
@@ -272,7 +277,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .dialog-actions .muted { margin-right: auto; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 7px; border: 1px solid var(--line-2); background: var(--surface); cursor: pointer; }
-.chip.on { border-color: var(--accent); background: var(--accent-soft); }
+.chip.on { border-color: var(--text-2); background: var(--select); }
 .shortcuts { margin: 0; display: grid; gap: 7px; }
 .shortcuts div { display: grid; grid-template-columns: 120px 1fr; }
 .shortcuts dd { margin: 0; color: var(--text-2); }
@@ -300,7 +305,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .tour-dim { position: fixed; inset: 0; background: var(--scrim); }
 .tour-spot {
   position: fixed; border-radius: 10px; pointer-events: none; transition: all 0.18s ease;
-  box-shadow: 0 0 0 2px var(--accent), 0 0 0 9999px var(--scrim);
+  box-shadow: 0 0 0 2px var(--link), 0 0 0 9999px var(--scrim);
 }
 .tour-pop {
   position: fixed; padding: 14px 16px 12px; border-radius: 12px; background: var(--raise);
@@ -313,5 +318,5 @@ button, input, textarea { font: inherit; color: inherit; }
 .tour-actions .link { margin-right: auto; color: var(--muted); }
 .tour-dots { display: flex; gap: 4px; margin-right: 6px; }
 .tour-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--line-2); }
-.tour-dots span.on { background: var(--accent); }
+.tour-dots span.on { background: var(--text); }
 @media (prefers-reduced-motion: reduce) { .tour-spot, .tour-pop { transition: none; } }

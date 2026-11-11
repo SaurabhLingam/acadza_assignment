@@ -67,6 +67,45 @@ def clip(s, n: int) -> str:
     return s if len(s) <= n else s[: n - 1].rstrip() + "…"
 
 
+NBSP = "\u00a0"
+_HEAD_MAX = 110
+
+
+def _cut_ok(s: str, i: int) -> bool:
+    """True if s[:i] closes every bracket and quote it opens (so a cut there is not inside a value)."""
+    pre = s[:i]
+    return (pre.count("(") == pre.count(")") and pre.count("[") == pre.count("]") and pre.count("“") == pre.count("”")
+            and pre.count('"') % 2 == 0 and len(re.findall(r"(?<![A-Za-z])'|'(?![A-Za-z])", pre)) % 2 == 0)
+
+
+def shorten(s: str, n: int = _HEAD_MAX) -> str:
+    """A headline short enough to read at a glance: drop spaced asides "( … )", then cut at a clause boundary."""
+    if len(s) <= n:
+        return s
+    t = re.sub(r" \([^()]*\)", "", s)
+    if len(t) > n:
+        cuts = [m.start() for m in re.finditer(r"[,;] ", t) if m.start() < n and _cut_ok(t, m.start())]
+        if cuts:
+            t = t[:cuts[-1]] + "."
+    return t
+
+
+def keep_values(s: str) -> str:
+    """Non-breaking spaces inside values, so a line never breaks in "a = 20 cm", "C (130 V)" or a short quote."""
+    if not isinstance(s, str):
+        return s
+    s = re.sub(r"(?<=\S) = (?=\S)", NBSP + "=" + NBSP, s)                                  # a = 20
+    s = re.sub(r"(?<=[0-9\u2070\u00b9\u00b2\u00b3\u2074-\u2079]) (?=[A-Za-z\u03a9\u03bc\u00b0%/][^\s,.;:]{0,5}(?:[\s,.;:)\u201d'\u2019]|$))",
+               NBSP, s)                                                                    # 20 cm, 130 V
+    s = re.sub(r"\b([A-H]) \(([^()]{1,28})\)",
+               lambda m: m[1] + NBSP + "(" + m[2].replace(" ", NBSP) + ")", s)            # C (130 V)
+    s = re.sub(r"(?<=[0-9]) ([x×]) (?=[0-9])", NBSP + r"\1" + NBSP, s)              # 5.7 x 10
+    short = lambda m: m[1] + m[2].replace(" ", NBSP) + m[3]
+    s = re.sub(r"(\u201c)([^\u201c\u201d]{1,30})(\u201d)", short, s)                       # “short quote”
+    s = re.sub(r"((?:^|(?<=[\s(]))')([^']{1,30})('(?=[\s,.;:)]|$))", short, s)              # 'short quote'
+    return s
+
+
 def model_of(role: str) -> str:
     m = config.ROLES[role][1]
     return MODEL_NAME.get(m, m.split("/")[-1])
@@ -165,6 +204,7 @@ def flag_spans(raw: str, quotes: list[str]) -> str | None:
 
 
 _TRAIL = re.compile(r"(?:\s|&nbsp;|<br\s*/?>|</[a-zA-Z0-9]+>)*$")
+_LEAD = re.compile(r"(?:\s|&nbsp;|</?(?:p|span|div|br)\b[^>]*>)*")
 
 
 def tag_options(pq, tags: dict[str, str]) -> str:
@@ -179,9 +219,13 @@ def tag_options(pq, tags: dict[str, str]) -> str:
         if _in_math(raw, cut):
             continue
         cls = {"KEY": "tag-key", "NEW": "tag-new", "OLD KEY": "tag-old"}[label]
-        spots.append((cut, f' <span class="opt-tag {cls}">{label}</span>'))
-    for cut, t in sorted(spots, reverse=True):
+        vs = e - len(pq.split.options_raw[L])
+        vs += _LEAD.match(raw, vs, cut).end() - vs
+        spots.append((cut, f' <span class="opt-tag {cls}">{label}</span>', vs if label == "OLD KEY" else None))
+    for cut, t, vs in sorted(spots, key=lambda x: x[0], reverse=True):
         raw = raw[:cut] + t + raw[cut:]
+        if vs is not None and vs < cut:          # the old key's value is struck through, not the tag
+            raw = mark(raw, vs, cut - vs, None, "del")
     return raw
 
 
@@ -444,7 +488,9 @@ def report_view(res, pq, det, findings) -> dict:
             tags = {L: "KEY"} if L in key else {}
         elif rep == "solution_fix":
             title = "Solution's final value"
-            sentence = f"The worked solution ends at {f}, but the answer is {r}."
+            lhs = re.match(r"\s*([^=]{1,12}?)\s*=\s*", str(r))
+            r_val = str(r)[lhs.end():] if lhs and str(f).strip().startswith(lhs.group(1)) else r
+            sentence = f"The solution ends at {f}, but the answer is {r_val}."
             base = sure_from_grid(grid, key, None, False)
             sure = (base.rstrip(".") + f"; the stored solution says {f}.") if base else f"Every check gives {r}."
             tags = {L: "KEY" for L in key} if pq.has_options else {}
@@ -479,8 +525,7 @@ def report_view(res, pq, det, findings) -> dict:
             title = f"Key {', '.join(key)} is right" if key else "No error"
             sentence = f"Checked: the stored key, {key_text(pq)}, is right."
             if det.get("injection_regex") or (det.get("guard") or {}).get("flag"):
-                sentence = (f"The comment tried to instruct the system to change the key; it was ignored. "
-                            f"The key, {key_text(pq)}, is right.")
+                sentence = f"The comment tried to change the key and was ignored; the key, {key_text(pq)}, is right."
             sure = sure_from_grid(grid, key, None, False) or "The checks found nothing wrong."
             nothing = "Nothing changes: the key and the question are correct as stored."
             tags = {L: "KEY" for L in key} if pq.has_options else {}
@@ -565,7 +610,7 @@ def report_view(res, pq, det, findings) -> dict:
     if grid:
         for r in grid["rows"]:
             r["text"] = pretty(r["text"])
-    title, sentence, sure = pretty(title), pretty(sentence), pretty(sure)
+    title, sentence, sure = pretty(title), keep_values(shorten(pretty(sentence))), keep_values(pretty(sure))
     if answer_change:
         answer_change = {k: pretty(x) for k, x in answer_change.items()}
     if suggestion:
@@ -678,8 +723,8 @@ def main():
             "routeWhy": [b["why"]], "decidedBy": b["source"], "reports": report_rows(qid, set()),
             "kind": "text" if diff else "faculty",
             "title": "Wrong chapter" if rep == "wrong_chapter" else pretty(clip(b["evidence_text"], 28)),
-            "sentence": pretty(re.split(r"(?<=[.!?])\s", b["detail"])[0]),
-            "sure": pretty(sure), "grid": None, "diff": diff, "answerChange": None, "typeChange": None,
+            "sentence": keep_values(shorten(pretty(re.split(r"(?<=[.!?])\s", b["detail"])[0]))),
+            "sure": keep_values(pretty(sure)), "grid": None, "diff": diff, "answerChange": None, "typeChange": None,
             "suggestion": None if diff else {"text": "Fix by hand.", "detail": b["why"]},
             "nothing": None,
             "questionHtml": flagged if b["field"] == "question" and flagged else pq.q.question_html,

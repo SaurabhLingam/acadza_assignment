@@ -43,22 +43,28 @@ export function Tour({ onClose }: { onClose: () => void }) {
     };
   }, [step.target]);
 
-  // place the popover beside the target, kept inside the window
+  // Place the popover beside the target, inside the window, covering neither this step's target nor the
+  // next step's (step 2's popover must not hide the "how sure" line that step 3 is about).
   useLayoutEffect(() => {
     const h = pop.current?.offsetHeight ?? 120;
     const vw = window.innerWidth, vh = window.innerHeight;
     const width = Math.min(W, vw - 32);
     if (!rect) { setPos({ top: vh / 2 - h / 2, left: vw / 2 - width / 2 }); return; }
-    let top: number, left: number;
-    if (rect.right + GAP + width < vw - 16 && rect.width < vw * 0.4) {           // right of a narrow target (queue)
-      top = rect.top; left = rect.right + GAP;
-    } else if (rect.bottom + GAP + h < vh - 16) {                                 // below
-      top = rect.bottom + GAP; left = rect.left;
-    } else {                                                                      // above
-      top = rect.top - GAP - h; left = rect.left;
-    }
-    if (step.target === "audit") left = rect.right - width;                       // right-aligned under the top bar link
-    setPos({ top: Math.max(16, Math.min(top, vh - h - 16)), left: Math.max(16, Math.min(left, vw - width - 16)) });
+    const nextEl = TOUR_STEPS[i + 1] && document.querySelector<HTMLElement>(`[data-tour="${TOUR_STEPS[i + 1].target}"]`);
+    const avoid = [rect, nextEl?.getBoundingClientRect()].filter((r): r is DOMRect => !!r && r.width > 0);
+    const alignX = step.target === "audit" ? rect.right - width : rect.left;   // right-aligned under the top bar link
+    const tries: [number, number][] = [];
+    if (rect.width < vw * 0.4) tries.push([rect.top, rect.right + GAP], [rect.bottom - h, rect.right + GAP]); // right of a narrow target, top or bottom
+    tries.push([rect.bottom + GAP, alignX], [rect.top - GAP - h, alignX]);    // below, above
+    tries.push([rect.top, rect.left - GAP - width]);                           // left, over the margin and the queue
+    for (const r of avoid.slice(1)) tries.push([r.bottom + GAP, alignX], [r.top - GAP - h, alignX]); // past the next target
+    const clamp = ([t, l]: [number, number]) => ({
+      top: Math.max(16, Math.min(t, vh - h - 16)), left: Math.max(16, Math.min(l, vw - width - 16)),
+    });
+    const hits = (p: { top: number; left: number }, r: DOMRect) =>
+      p.left < r.right + PAD && p.left + width > r.left - PAD && p.top < r.bottom + PAD && p.top + h > r.top - PAD;
+    const spots = tries.map(clamp);
+    setPos(spots.find((p) => !avoid.some((r) => hits(p, r))) ?? spots.find((p) => !hits(p, rect)) ?? spots[0]);
   }, [rect, i, step.target]);
 
   useEffect(() => nextBtn.current?.focus(), [i]);

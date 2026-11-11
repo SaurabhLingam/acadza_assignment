@@ -36,6 +36,11 @@ J / K move, `\` hides the queue, `?` lists the keys. Deep links: `#<list>/<quest
 
 Queue order (D-026): harm, then reach (distinct reporters), then certainty.
 
+Colour: monochrome. Primary buttons are near-white on dark / near-black on light; links and focus rings are one
+calm blue. Red and green appear only in diffs (including the OLD KEY / NEW tags, where the old option's value is
+struck through) and ✓/✗ marks. Headlines are kept to about 110 characters and use non-breaking spaces inside
+values ("a = 20 cm", "C (130 V)"), so a line never breaks mid-value.
+
 A six-step guided tour (`src/components/Tour.tsx`, no library) opens on the first visit, on the first case of
 "Needs you": queue, headline, how sure, what changes, action bar, audit log. It is remembered in localStorage
 (`rr.tourSeen`), skippable (Esc), keyboard-driven (→ / Enter next, ← back, focus kept in the popover) and can be
