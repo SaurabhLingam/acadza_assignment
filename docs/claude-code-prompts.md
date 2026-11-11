@@ -1297,3 +1297,13 @@ session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
 ```text
 I cant see it on github
 ```
+
+---
+
+### 2026-11-11T18:50:43+05:30
+
+session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
+
+```text
+it renders but its too long and like have to scroll too much, what can we do?
+```
