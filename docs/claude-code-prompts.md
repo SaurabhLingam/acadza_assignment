@@ -1307,3 +1307,13 @@ session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
 ```text
 it renders but its too long and like have to scroll too much, what can we do?
 ```
+
+---
+
+### 2026-11-11T22:47:10+05:30
+
+session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
+
+```text
+Replace VIDEO_URL in README.md with https://drive.google.com/file/d/1i9Oj8G7K5UrUefLKH1x_6C5VfyFh3S7I/view?usp=sharing. Commit and push.
+```
