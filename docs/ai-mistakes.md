@@ -27,3 +27,9 @@ Times the AI (coding assistant or in-product LLM) got something wrong. Add entri
 - **What the AI did wrong:** the reply writer told the R034 student "the correct answer is B" on a question with no correct option. Code gave it no correct-answer fact, so it made one up.
 - **How I caught it:** Caught reviewing the 6-report test.
 - **What I changed:** Approved fixes: for an unsound question the facts state that no option is correct as written, and the reply check rejects any option or value the facts don't contain (falling back to a template); reply_v3.
+
+## M-004: Triage wrote an inserted value in caret notation that would render literally
+- **Date:** 2026-11-11
+- **What the AI did wrong:** the 20b run would have put "95.5×10^−3 H" live. In R007's stem_data edit, triage copied the clean-text notation it is shown (`^` for superscripts) into the replacement; the value was right, but HTML would show the caret. It passed every guard and auto-applied.
+- **How I caught it:** found by the robustness test (D-005): `eval/compare_runs.py` lists auto-applied edits that differ from the main run, and R007's read "an inductance of 95.5×10^−3 H" where the main run had "inductance of 95.5 mH".
+- **What I changed:** an edit guard: inserted text must not contain characters that would render literally (^, \, _{, raw LaTeX); values are written the way a student reads them (e.g. "95.5 mH"). The guard checks visible text only and blocks additions (`engine/edits.py`, test `test_guard_blocks_notation_that_renders_literally`); triage_v3 tells the model the same.

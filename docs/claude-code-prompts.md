@@ -490,3 +490,61 @@ session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
 <summary>Background command "Run all 44 reports with gpt-oss-20b swapped in" completed (exit code 0)</summary>
 </task-notification>
 ```
+
+---
+
+### 2026-11-11T07:22:19+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+
+
+<pasted_content id="8dee">
+decision: approve D-025.
+
+Also add an edit guard: inserted text must not contain characters that would render literally (^, \, _{, raw LaTeX). Write values the way a student reads them (e.g. "95.5 mH"). The 20b run would have put "95.5×10^−3 H" live. Note it in ai-mistakes as found by the robustness test. Commit and push.
+
+Then the faculty console, in console/. Design is below; build it in stages and stop after stage 1 so I can look at it.
+
+Stack: React + Vite + TypeScript, static build for Vercel. A build script bakes data/questions.json, results.json, the evidence and bonus_findings.json into one data file, with the "after" HTML pre-computed by applying each edit. No backend, no API keys. Small banner: "Precomputed results, no live AI calls."
+
+Who it's for: a tired faculty member at 10 PM checking dozens of these. They must see in two seconds what changed and why, act in one keystroke, and trust what they see. Dark mode by default, light toggle. Calm and dense, Linear-style. Make it look deliberately designed, not like a default template.
+
+Layout:
+- Top bar: progress (x of y reviewed), counts per route, link to the audit log.
+- Left: queue grouped by question. Tabs: Needs you / Auto-applied (with undo) / No change (spot-check) / Bonus findings. Each row: urgency dot, topic, number of reporters, one-line reason.
+- Centre, for the selected case:
+  - Headline, e.g. "Answer key C → A · 3 students · all sources agree".
+  - Evidence as chips: ✓ gpt-oss → A, ✓ DeepSeek → A, ✓ stored solution → A, ✗ key says C. Raw evidence one click away.
+  - The question rendered properly (native MathML), changed part highlighted.
+  - Before/after diff side by side, rendered not raw, changes marked. Answer-key changes as a pill: "C (130 V) → A (50 V)".
+  - Every student comment for this question, each with its reply preview, editable.
+- Fixed action bar: Approve (A), Edit (E: edit the replacement inline, guards re-run, invalid edits blocked), Reject (R: quick reason chips). J/K to move between cases. Undo toast after every action.
+
+Urgency order = harm × reach × certainty. Harm: defects that stop a student getting the right answer (wrong key, missing data, unsound, blank keyed option) first, wrong solution middle, cosmetic last. Reach: distinct reporters. Certainty: agreeing evidence first, since those are quick wins. Show "why it's here" on each item.
+
+Audit log: every action records time, reviewer (asked once), case, action, before/after, reason. Stored in localStorage, with export to JSON. Say honestly in the UI that it's stored in this browser.
+
+Safety: sanitize all question HTML and student comments (allow MathML, strip scripts and handlers).
+
+Stage 1: the data build script, the layout with real data, the queue and case view with rendered questions. No actions yet. Tell me how to run it locally.
+</pasted_content id="8dee">
+
+```
+
+---
+
+### 2026-11-11T07:25:08+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+<task-notification>
+<task-id>bx5r0xk0n</task-id>
+<tool-use-id>toolu_01JjZr6WXT3AJoC4gz6C9aLG</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\77f3d0e8-4bb1-44c9-8f08-2d117cd48778\tasks\bx5r0xk0n.output</output-file>
+<status>completed</status>
+<summary>Background command "Rerun R006-R008 with 20b swap and triage_v3" completed (exit code 0)</summary>
+</task-notification>
+```

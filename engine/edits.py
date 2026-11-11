@@ -14,6 +14,9 @@ from .checks import DEFINITE, ParsedQuestion
 from .parse import locate_raw
 
 MAX_FIND_CHARS = 400
+# Text an edit inserts must read the way a student sees it on screen: these sequences would render literally
+# in HTML (a caret or underscore used as notation, a LaTeX command). Write "95.5 mH", not "95.5×10^−3 H".
+_LITERAL_NOTATION = (("^", "a caret"), ("\\", "a backslash (LaTeX)"), ("_{", "'_{' (LaTeX subscript)"))
 MAX_FIND_SHARE = 0.5          # an edit may not replace more than half of a field
 _LATEX_SIMPLE = {
     r"\AA": "Å", r"\times": "×", r"\pi": "π", r"\alpha": "α", r"\beta": "β", r"\gamma": "γ",
@@ -191,6 +194,11 @@ def guard(edit: dict | None, repair: str, pq: ParsedQuestion, taxonomy: dict) ->
         if not isinstance(rep, str):
             fails.append("replace must be text")
         elif isinstance(find, str):
+            seen = lambda x: html.unescape(re.sub(r"<[^>]*>", "", x))      # visible text only, not attributes
+            for seq, what in _LITERAL_NOTATION:
+                if seen(rep).count(seq) > seen(find).count(seq):
+                    fails.append(f"inserted text contains {what}, which would render literally; "
+                                 f"write the value as a student reads it (e.g. 95.5 mH)")
             if repair == "answer_form" and (find not in rep or len(rep) <= len(find)):
                 fails.append("answer_form edits must be additive (find kept intact)")
             if repair == "spelling":

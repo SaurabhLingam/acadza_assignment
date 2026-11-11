@@ -182,6 +182,21 @@ def test_guards():
                                                    "spelling", pq, TAX))
 
 
+def test_guard_blocks_notation_that_renders_literally():
+    pq = _pq("A coil of inductance is connected to a 10 V source.<br/>(A) 1 A<br/>(B) 2 A<br/>(C) 3 A<br/>(D) 4 A")
+    ok = {"field": "question", "find": "inductance", "replace": "inductance of 95.5 mH"}
+    assert guard(ok, "stem_data", pq, TAX) == []
+    for bad in ("inductance of 95.5×10^−3 H", r"inductance of 95.5\times 10 H", "inductance L_{1}",
+                "inductance of 95.5×10<sup>-3</sup> H^"):
+        fails = guard({**ok, "replace": bad}, "stem_data", pq, TAX)
+        assert any("render literally" in f for f in fails), bad
+    # visible text only: a caret inside a tag attribute is not inserted text
+    assert guard({**ok, "replace": 'inductance of <span title="a^b">95.5 mH</span>'}, "stem_data", pq, TAX) == []
+    # a span that already showed the notation may keep it (only additions are blocked)
+    pq2 = _pq("Energy is x^2 here.<br/>(A) 1<br/>(B) 2<br/>(C) 3<br/>(D) 4")
+    assert guard({"field": "question", "find": "x^2 here", "replace": "x^2 there"}, "spelling", pq2, TAX) == []
+
+
 # --------------------------------------------------------------------------- end to end, offline
 
 ROLE_BY_PHRASE = [("expert JEE/NEET problem solver", "solver"), ("report, factually", "extract"),

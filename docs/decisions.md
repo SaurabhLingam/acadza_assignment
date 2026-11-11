@@ -206,3 +206,10 @@ Each entry: **Decision**, **Alternatives considered**, **Why**, **Evidence**. Ne
 - **Alternatives considered:** Treat notation as low-risk alongside spelling and markup_leak (it is a one-expression edit), and solution_missing as low-risk because the solution must end in the keyed answer.
 - **Why:** A lost exponent, sign or bracket restored wrongly changes the value a student reads, which is the same harm as a wrong stem_data edit. A written solution is new authored content, like a filled option (D-020).
 - **Evidence:** D-023 already listed both as "treated as high-stakes"; this makes it a stated rule. In code, `engine/config.py` `LOW_RISK_REPAIRS` excludes both, so `Runner._auto_bar` in `engine/run.py` applies the two-independent-sources bar to them. Neither repair was proposed in the full run `20261110T182626Z`.
+
+## D-025: Manual review of bonus findings lives in docs/bonus-review.json and is merged by engine/bonus.py
+- **Date:** 2026-11-11
+- **Decision:** approve D-025. Manual review findings live in `docs/bonus-review.json` (`add` / `dismiss`) and `engine/bonus.py` merges them into `bonus_findings.json`. Each added finding's `evidence_raw` must occur in the stored HTML, and each dismissal must match a real code finding, or the merge fails. Question IDs stay in that data file, never in engine code.
+- **Alternatives considered:** Hand-edit `bonus_findings.json` (lost on the next regeneration); hard-code the false positives in the checks (would put question IDs in engine logic, D-010).
+- **Why:** The checks miss real defects (e.g. "prominant", the unit inside a root) and raise some false positives (inhibit/inhibin). A review layer keeps human judgement separate from code findings, every row says where it came from (`source`, `found_by`), and the strict validation stops a typo or a stale entry from slipping in silently.
+- **Evidence:** First merge: the user's 7 items (all confirmed in the raw HTML) plus 2 found while verifying them, 2 dismissals; a mistyped question ID in a dismissal was caught by the "matches no code finding" check before it shipped. `bonus_findings.json`: 21 findings (8 code, 13 manual).
