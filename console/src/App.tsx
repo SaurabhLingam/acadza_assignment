@@ -5,6 +5,7 @@ import { diffHtml, draftEdit, guard, startDraft } from "./edit";
 import { CaseView } from "./components/CaseView";
 import { AuditDrawer, NameDialog, Queue, ReasonDialog, Shortcuts, Toast } from "./components/chrome";
 import { Kbd } from "./components/ui";
+import { Tour } from "./components/Tour";
 
 type Theme = "dark" | "light";
 interface Pending { def: ActionDef; reason?: string; note?: string }
@@ -37,6 +38,7 @@ export function App() {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [showKeys, setShowKeys] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
+  const [tour, setTourOpen] = useState(false);
   const toastTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -63,6 +65,24 @@ export function App() {
   }, [lists]);
 
   // deep link: #<list>/<item key or question id prefix>
+  // The tour runs on the first case of "Needs you", with the queue showing.
+  const setTour = (on: boolean) => {
+    if (on) {
+      setShowKeys(false); setShowAudit(false); setDraft(null);
+      setList("needs"); setQueueOpen(true);
+      const first = listOf(items, "needs", decisions)[0];
+      if (first) setSel((s) => ({ ...s, needs: first.key }));
+    } else {
+      save(KEYS.tour, true);
+    }
+    setTourOpen(on);
+  };
+  // first visit: show it once, remembered in this browser
+  useEffect(() => {
+    if (data && !load(KEYS.tour, false) && !parseHash().ref) setTour(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
   const listsRef = useRef(lists);
   listsRef.current = lists;
   useEffect(() => {
@@ -183,7 +203,7 @@ export function App() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (askReason || askName || showKeys || showAudit) return;   // dialogs handle their own keys
+      if (askReason || askName || showKeys || showAudit || tour) return;   // dialogs handle their own keys
       const t = e.target as HTMLElement;
       const typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
       if (draft) {
@@ -224,7 +244,8 @@ export function App() {
           <span><b>{remaining}</b> of {needsTotal} need you</span>
           <span className="bar" aria-hidden><span style={{ width: `${needsTotal ? ((needsTotal - remaining) / needsTotal) * 100 : 100}%` }} /></span>
         </div>
-        <button className="link" onClick={() => setShowAudit(true)}>Audit log{audit.length ? ` · ${audit.length}` : ""}</button>
+        <button className="link" onClick={() => setTour(true)}>Tour</button>
+        <button className="link" data-tour="audit" onClick={() => setShowAudit(true)}>Audit log{audit.length ? ` · ${audit.length}` : ""}</button>
         <button className="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label="Toggle light or dark theme"
           title="Light / dark">{theme === "dark" ? "☀" : "☾"}</button>
       </header>
@@ -258,7 +279,7 @@ export function App() {
         )}
       </main>
 
-      <footer className="actions">
+      <footer className="actions" data-tour="actions">
         <span className="pos">
           {current ? `${lists[list].findIndex((x) => x.key === current.key) + 1} / ${lists[list].length}` : ""}
           <span className="hint"><Kbd>J</Kbd><Kbd>K</Kbd></span>
@@ -295,7 +316,8 @@ export function App() {
         <ReasonDialog title={`${askReason.label}: why?`} onCancel={() => setAskReason(null)}
           onDone={(r, n) => { const d = askReason; setAskReason(null); commit(d, r, n); }} />
       )}
-      {showKeys && <Shortcuts onClose={() => setShowKeys(false)} />}
+      {showKeys && <Shortcuts onClose={() => setShowKeys(false)} onTour={() => setTour(true)} />}
+      {tour && <Tour onClose={() => setTour(false)} />}
       {showAudit && (
         <AuditDrawer entries={audit} reviewer={reviewer} onClose={() => setShowAudit(false)}
           onRename={() => { setShowAudit(false); setReviewer(""); save(KEYS.reviewer, ""); }}

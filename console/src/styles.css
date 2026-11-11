@@ -294,3 +294,24 @@ button, input, textarea { font: inherit; color: inherit; }
   .sbs { grid-template-columns: 1fr; }
   .case { padding: 20px 16px 40px; }
 }
+
+/* ------------------------------------------------------------------ tour */
+.tour { position: fixed; inset: 0; z-index: 40; }
+.tour-dim { position: fixed; inset: 0; background: var(--scrim); }
+.tour-spot {
+  position: fixed; border-radius: 10px; pointer-events: none; transition: all 0.18s ease;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 0 9999px var(--scrim);
+}
+.tour-pop {
+  position: fixed; padding: 14px 16px 12px; border-radius: 12px; background: var(--raise);
+  border: 1px solid var(--line-2); box-shadow: var(--shadow); transition: top 0.18s ease, left 0.18s ease;
+}
+.tour-count { margin: 0; font-size: 11.5px; color: var(--muted); }
+.tour-pop h2 { margin: 2px 0 4px; font-size: 15px; }
+.tour-pop p#tour-text { margin: 0; color: var(--text-2); }
+.tour-actions { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.tour-actions .link { margin-right: auto; color: var(--muted); }
+.tour-dots { display: flex; gap: 4px; margin-right: 6px; }
+.tour-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--line-2); }
+.tour-dots span.on { background: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .tour-spot, .tour-pop { transition: none; } }

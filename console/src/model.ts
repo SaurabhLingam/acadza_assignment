@@ -72,7 +72,7 @@ export function fmtTime(iso: string): string {
 
 // ---------------------------------------------------------------- browser storage (per-viewer, may be unavailable)
 
-export const KEYS = { decisions: "rr.decisions.v1", audit: "rr.audit.v1", reviewer: "rr.reviewer", theme: "rr.theme", queue: "rr.queue" };
+export const KEYS = { decisions: "rr.decisions.v1", audit: "rr.audit.v1", reviewer: "rr.reviewer", theme: "rr.theme", queue: "rr.queue", tour: "rr.tourSeen" };
 
 export function load<T>(k: string, fallback: T): T {
   try {

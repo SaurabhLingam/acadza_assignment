@@ -686,3 +686,32 @@ session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
 ```text
 Yes, add D-026 and D-027 to decisions.md. Commit and push.
 ```
+
+---
+
+### 2026-11-11T08:24:05+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+
+
+<pasted_content id="8dee">
+Add a first-visit guided tour to the console.
+
+- Shows automatically on first visit (remember in localStorage), skippable, reopen anytime from a "Tour" button and the ? shortcut screen.
+- 6 short steps, each highlighting one area with a dimmed backdrop:
+  1. Queue: "Cases that need you, most harmful first. Grouped by question."
+  2. Headline: "What's wrong, in one sentence."
+  3. How sure: "How much independent evidence agrees. Open 'Show evidence' for the grid."
+  4. What changes: "Before and after. Nothing goes live without your action here."
+  5. Action bar: "Approve, Edit or Reject. Keyboard: A / E / R, J / K to move."
+  6. Audit log: "Every action is recorded with your name. Export anytime."
+- Max 2 short lines per step. Back / Next / Skip. Keyboard accessible.
+- No heavy tour library; build it lightweight.
+- Run it on the first case of "Needs you".
+
+Commit and push. Show me a screenshot of step 1 and step 4.
+</pasted_content id="8dee">
+
+```

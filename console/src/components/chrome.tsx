@@ -24,7 +24,7 @@ export function Queue({ list, items, counts, questions, decisions, selected, onL
   }, [selected]);
   const other = list === "auto" || list === "nochange" || list === "bonus";
   return (
-    <nav className="queue" aria-label="Queue">
+    <nav className="queue" aria-label="Queue" data-tour="queue">
       <div className="qtabs" role="tablist">
         {(["needs", "done"] as ListKey[]).map((k) => (
           <button key={k} role="tab" aria-selected={list === k} className={`qtab ${list === k ? "on" : ""}`} onClick={() => onList(k)}>
@@ -136,7 +136,7 @@ const SHORTCUTS: [string, string][] = [
   ["Ctrl + Enter", "Save an edit"], ["Esc", "Cancel / close"], ["\\", "Show or hide the queue"], ["?", "This list"],
 ];
 
-export function Shortcuts({ onClose }: { onClose: () => void }) {
+export function Shortcuts({ onClose, onTour }: { onClose: () => void; onTour: () => void }) {
   return (
     <div className="scrim" role="dialog" aria-modal="true" aria-labelledby="sc-title" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
@@ -144,7 +144,7 @@ export function Shortcuts({ onClose }: { onClose: () => void }) {
         <dl className="shortcuts">
           {SHORTCUTS.map(([k, v]) => (<div key={k}><dt><Kbd>{k}</Kbd></dt><dd>{v}</dd></div>))}
         </dl>
-        <div className="dialog-actions"><button className="btn" autoFocus onClick={onClose}>Close</button></div>
+        <div className="dialog-actions"><button className="btn" onClick={onTour}>Take the tour</button><button className="btn" autoFocus onClick={onClose}>Close</button></div>
       </div>
     </div>
   );

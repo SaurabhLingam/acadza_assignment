@@ -54,10 +54,10 @@ export function CaseView({ item, q, decision, draft, setDraft, draftDiff, guardE
       )}
 
       {/* 1. What's wrong */}
-      <h1 id="case-title" className="sentence">{item.sentence}</h1>
+      <h1 id="case-title" className="sentence" data-tour="headline">{item.sentence}</h1>
 
       {/* 2. How sure */}
-      <p className="sure">
+      <p className="sure" data-tour="sure">
         {item.sure}{" "}
         <button className="link" onClick={() => setShowEvidence((v) => !v)} aria-expanded={showEvidence}>
           {showEvidence ? "Hide evidence" : "Show evidence"}
@@ -83,7 +83,7 @@ export function CaseView({ item, q, decision, draft, setDraft, draftDiff, guardE
       <p className="why">Why it's here: {item.why}</p>
 
       {/* 3. What changes */}
-      <section className="changes" aria-label="What changes">
+      <section className="changes" aria-label="What changes" data-tour="changes">
         <h2 className="label">What changes</h2>
         <Changes item={item} q={q} draft={draft} setDraft={setDraft} draftDiff={draftDiff} guardError={guardError} />
       </section>

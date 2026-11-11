@@ -36,6 +36,12 @@ J / K move, `\` hides the queue, `?` lists the keys. Deep links: `#<list>/<quest
 
 Queue order (D-026): harm, then reach (distinct reporters), then certainty.
 
+A six-step guided tour (`src/components/Tour.tsx`, no library) opens on the first visit, on the first case of
+"Needs you": queue, headline, how sure, what changes, action bar, audit log. It is remembered in localStorage
+(`rr.tourSeen`), skippable (Esc), keyboard-driven (→ / Enter next, ← back, focus kept in the popover) and can be
+reopened from the **Tour** button or the `?` screen. A first visit through a deep link skips it, so a shared
+link opens straight on its case.
+
 ## Data build (`scripts/build_data.py`)
 
 Run from the repo root (`npm run data`). It uses the engine's parser and reads `results.json`, the
