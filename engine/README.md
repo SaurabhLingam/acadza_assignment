@@ -6,6 +6,9 @@ Python triage engine: the code-only tier (data profiler) and the LLM tiers. Stan
 python -m engine.profile          # writes logs/profile/{reports.csv, questions.csv, summary.md}
 python -m eval.evaluate_profile   # compares code-decided rows with the hand labels (eval/ only)
 python -m pytest tests            # parser tests + project-rule guards
+python -m engine.bonus            # question-level findings no report covers -> bonus_findings.json
+python -m engine.run --swap-model openai/gpt-oss-20b    # D-005 robustness run -> logs/runs/<id>-swap-*/ only
+python -m eval.compare_runs logs/runs/<main> logs/runs/<swap>   # accuracy, routes, wrong auto-applies
 ```
 
 | Module | Role |
@@ -23,7 +26,8 @@ python -m pytest tests            # parser tests + project-rule guards
 | `tiers.py` | LLM calls → signals: guard, solvers, extract, audit, option checks (value checks for integer questions), triage, reply. |
 | `decide.py` | Code decides verdict / repair / route / confidence from the signals (D-016); shadow-mode per-tier decisions. |
 | `edits.py` | Code-built edits, clean-text → raw mapping for LLM edits (D-019), D-004 guards. |
-| `run.py` | `python -m engine.run [--reports a,b] [--cap 0.5] [--offline]`: full pipeline, `results.json`, run summary. |
+| `run.py` | `python -m engine.run [--reports a,b] [--cap 0.5] [--offline] [--swap-model M]`: full pipeline, `results.json`, run summary. `--swap-model` puts M in solver #1 and the checks (audit, option and value checks) and writes only under `logs/runs/`. |
+| `bonus.py` | Definite findings and signals no report's claim covers and no `results.json` edit fixes → `bonus_findings.json`, with a code-built edit where possible and whether it could auto-apply under D-023. |
 
 Rules are generic: no question or report IDs (D-010, enforced by `tests/test_project_rules.py`).
 

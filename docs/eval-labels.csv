@@ -25,7 +25,7 @@ R022,61ee6c9d90a1a968a168686b,defect,spelling,B,"Option D 'Choroid plexux' -> 'p
 R023,68ecbacb2ec87a18deba1ad7,defect,wrong_chapter,B,Neuron action-potential question filed under Botany / The Living World,user_verified
 R024,5fc60508028950133eac8963,defect,answer_form,20,Integer answer 20 N; unit not stated in question,user_verified
 R025,622df25ab70e4b50e44ff837,defect,diagram,B,Stem says 'as shown in figure'; no image stored. Answer B correct on physics,user_verified
-R026,620e23cecc50543bc7db9186,defect,syllabus,B,"UNSURE of verdict: syllabus is a repair, so defect is the only verdict that pairs with it; faculty confirm, question stays live",user_verified
+R026,620e23cecc50543bc7db9186,defect,syllabus,B,"Verified defect/syllabus: syllabus is a repair, so defect is the verdict that pairs with it; faculty confirm, question stays live",user_verified
 R027,6062ec84518e9535e120c422,no_error,,A,"Injection attempt; alpha = 1.9e-5, gamma = 3*alpha = 5.7e-5 = A, key right. Unreported: solution units '/AC', '/CC'",user_verified
 R028,6956d7bb23cb221e570d6013,no_error,,B,"H = R gives tan(theta) = 4, so tan^-1(4) = B",user_verified
 R029,68e8734442c06737d6e56da4,no_error,,A,"F - 100mu = 10, 2F - 100mu = 100 so mu = 0.8 = A",user_verified

@@ -2,7 +2,9 @@
 
     python -m engine.run --reports <id>,<id>,...                   # test subset
     python -m engine.run                                           # all reports -> results.json
-Options: --cap USD (default 0.50), --offline (cache only, no network), --no-cache
+Options: --cap USD (default 0.50), --offline (cache only, no network), --no-cache,
+         --swap-model MODEL (robustness test, D-005: MODEL replaces solver #1 and the checks; output goes
+         to logs/runs/<run_id>-swap-<model>/ only, never to the root results.json or logs/run-summary.json)
 
 Every tier runs on every report (D-003); what an early exit would have decided
 is logged per tier. Code decides verdict, route and confidence (D-001, D-016).
@@ -53,6 +55,10 @@ WHAT_WAS_WRONG = {
     "identical_options": "two of the options were the same.",
     "diagram": "the figure the question needs was missing or wrong.",
 }
+
+# Roles a --swap-model run replaces: solver #1 and the checks (solution audit, option checks, value checks).
+# Triage, extract, reply, the guard and the second-family solver/tie-breakers keep their models.
+SWAP_ROLES = ("solver_1", "audit", "option_check", "value_check")
 
 RESULT_KEYS = ("reportId", "questionId", "verdict", "repair", "edit", "route", "confidence", "evidence",
                "student_reply")
@@ -775,9 +781,20 @@ def main(argv=None):
     ap.add_argument("--cap", type=float, default=config.DEFAULT_SPEND_CAP_USD)
     ap.add_argument("--offline", action="store_true", help="cache only; never touch the network")
     ap.add_argument("--no-cache", action="store_true")
+    ap.add_argument("--swap-model", default="", metavar="MODEL",
+                    help="robustness test (D-005): MODEL for " + ", ".join(SWAP_ROLES) + "; writes only to logs/runs/")
     a = ap.parse_args(argv)
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    swapped = {}
+    if a.swap_model:
+        if a.swap_model not in config.FAMILY:
+            raise SystemExit(f"--swap-model: unknown model {a.swap_model} (add it to config.FAMILY)")
+        for role in SWAP_ROLES:
+            prov, model, *rest = config.ROLES[role]
+            swapped[role] = [model, a.swap_model]
+            config.ROLES[role] = (prov, a.swap_model, *rest)
+        run_id += "-swap-" + a.swap_model.split("/")[-1]
     t_start = time.perf_counter()
     taxonomy = load_taxonomy()
     questions = load_questions()
@@ -812,7 +829,7 @@ def main(argv=None):
     with open(run_dir / "details.jsonl", "w", encoding="utf-8") as fh:
         for d in details:
             fh.write(json.dumps(d, ensure_ascii=False, default=str) + "\n")
-    if full_run and not stopped:
+    if full_run and not stopped and not swapped:
         (ROOT / "results.json").write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
 
     shadow_dis = [{"reportId": d["reportId"], "tier": s["tier"], "name": s["name"],
@@ -822,7 +839,7 @@ def main(argv=None):
     for d in details:
         settled[TIER_NAMES[d["settled_tier"]]] = settled.get(TIER_NAMES[d["settled_tier"]], 0) + 1
     summary = {
-        "run_id": run_id, "reports_requested": len(reports), "reports_done": len(out), "full_run": full_run,
+        "run_id": run_id, "swapped_roles": swapped, "reports_requested": len(reports), "reports_done": len(out), "full_run": full_run,
         "stopped": stopped, "total_time_s": round(time.perf_counter() - t_start, 1),
         "total_tokens": {"in": client.tokens_in_total, "out": client.tokens_out_total},
         "spend_usd": round(client.spend.spent_usd, 6), "spend_cap_usd": client.spend.cap_usd,
@@ -837,7 +854,8 @@ def main(argv=None):
         "results_file": str((run_dir / "results.json").relative_to(ROOT)),
     }
     (run_dir / "run-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    (ROOT / "logs" / "run-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    if not swapped:
+        (ROOT / "logs" / "run-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(json.dumps({k: summary[k] for k in ("reports_done", "stopped", "spend_usd", "routed_to_faculty",
                                               "auto_applied", "injection_flags")}, indent=1))
     return summary

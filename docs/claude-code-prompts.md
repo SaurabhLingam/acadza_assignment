@@ -426,3 +426,26 @@ Rerun only what's affected (cache the rest), rescore, commit and push. Give me a
 </pasted_content id="5d75">
 
 ```
+
+---
+
+### 2026-11-11T06:55:13+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+
+
+<pasted_content id="8dee">
+Fresh session. Before anything, read CLAUDE.md, docs/decisions.md, engine/README.md and the latest logs/run-summary.json so you know where the project stands.
+
+Then three small things, then a test.
+
+1. Clear R026's "UNSURE" note in eval-labels.csv (verified as defect/syllabus).
+2. decision: notation and solution_missing count as high-stakes repairs under D-023. notation can change what a value means, and solution_missing writes new content, so both need two independent sources.
+3. Collect every question-level finding no report covers into bonus_findings.json at the repo root: question id, repair type, exact evidence text, and whether it could auto-apply. Include the leftovers on reported questions too (like "Canolla" in R040's question).
+
+Then the weak-model robustness test (decision e): rerun all 44 with gpt-oss-20b instead of gpt-oss-120b as solver #1 and for the checks, writing only to logs/runs/, never the root results.json. Compare it to the main run: accuracy vs eval-labels, how many cases moved to faculty, and above all the number of wrong auto_applies. Run it in the background and report when done. Commit and push.
+</pasted_content id="8dee">
+
+```

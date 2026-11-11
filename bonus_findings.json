@@ -1,0 +1,258 @@
+[
+  {
+    "questionId": "66fe9dbe22132e5a70a3e579",
+    "repair": "spelling",
+    "check": "spelling_suspect",
+    "strength": "signal",
+    "field": "solution",
+    "detail": "'inhibit' looks like a misspelling of 'inhibin' (one edit).",
+    "evidence_text": "inhibit",
+    "evidence_raw": " inhibit ",
+    "evidence_raw_unique": true,
+    "reports_on_question": [
+      "R035"
+    ],
+    "proposed_edit": null,
+    "edit_how": "code suggests a nearby word, but both may be real words; needs a confirm",
+    "could_auto_apply": false,
+    "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply",
+    "occurrences": [
+      {
+        "field": "solution",
+        "text": "inhibit",
+        "raw": " inhibit ",
+        "raw_unique": true
+      },
+      {
+        "field": "question",
+        "text": "Inhibin",
+        "raw": "Inhibin",
+        "raw_unique": true
+      },
+      {
+        "field": "solution",
+        "text": "Inhibin",
+        "raw": "Inhibin",
+        "raw_unique": true
+      }
+    ]
+  },
+  {
+    "questionId": "6956d79788d7701e5617bc29",
+    "repair": "markup_leak",
+    "check": "alignment_marker_leak",
+    "strength": "definite",
+    "field": "solution",
+    "detail": "2 lone '&' token(s) in solution MathML (LaTeX alignment markers); a browser shows them as a visible '&'.",
+    "evidence_text": "&",
+    "evidence_raw": "w><mi>&amp;</mi><m",
+    "evidence_raw_unique": true,
+    "reports_on_question": [
+      "R015"
+    ],
+    "proposed_edit": null,
+    "edit_how": "markup not convertible by code",
+    "could_auto_apply": false,
+    "why": "definite and low-risk, but code builds no edit for this check yet"
+  },
+  {
+    "questionId": "622df25ab70e4b50e44ff837",
+    "repair": "spelling",
+    "check": "spelling_suspect",
+    "strength": "signal",
+    "field": "question",
+    "detail": "'hemispherial' and 'hemispherical' differ by one edit; one is likely misspelled.",
+    "evidence_text": "hemispherial",
+    "evidence_raw": "hemispherial",
+    "evidence_raw_unique": true,
+    "reports_on_question": [
+      "R025"
+    ],
+    "proposed_edit": null,
+    "edit_how": "two spellings of one word appear the same number of times; code cannot tell which is the misspelling",
+    "could_auto_apply": false,
+    "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply",
+    "occurrences": [
+      {
+        "field": "question",
+        "text": "hemispherial",
+        "raw": "hemispherial",
+        "raw_unique": true
+      },
+      {
+        "field": "question",
+        "text": "hemispherical",
+        "raw": "hemispherical",
+        "raw_unique": true
+      }
+    ]
+  },
+  {
+    "questionId": "612151a6a34397610a9a2e58",
+    "repair": "markup_leak",
+    "check": "latex_in_text",
+    "strength": "definite",
+    "field": "solution",
+    "detail": "Raw LaTeX visible in solution: \\AA",
+    "evidence_text": "\\AA",
+    "evidence_raw": "\\AA",
+    "evidence_raw_unique": true,
+    "reports_on_question": [
+      "R018",
+      "R019"
+    ],
+    "proposed_edit": {
+      "field": "solution",
+      "find": "\\AA",
+      "replace": "Å"
+    },
+    "edit_how": "code: LaTeX to text",
+    "could_auto_apply": true,
+    "why": "definite, low-risk (D-023), code-built edit passes the guards"
+  },
+  {
+    "questionId": "6264197209f4fd65f58f5707",
+    "repair": "spelling",
+    "check": "run_together_words",
+    "strength": "signal",
+    "field": "solution",
+    "detail": "'ofvitamin' looks like two words run together: 'of vitamin'.",
+    "evidence_text": "ofvitamin",
+    "evidence_raw": "ofvitamin",
+    "evidence_raw_unique": true,
+    "reports_on_question": [
+      "R040"
+    ],
+    "proposed_edit": {
+      "field": "solution",
+      "find": "ofvitamin",
+      "replace": "of vitamin"
+    },
+    "edit_how": "code: split run-together words",
+    "could_auto_apply": false,
+    "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply"
+  },
+  {
+    "questionId": "6264197209f4fd65f58f5707",
+    "repair": "spelling",
+    "check": "spelling_suspect",
+    "strength": "signal",
+    "field": "solution",
+    "detail": "'Canola' and 'canolla' differ by one edit; one is likely misspelled.",
+    "evidence_text": "Canola",
+    "evidence_raw": "Canola",
+    "evidence_raw_unique": true,
+    "reports_on_question": [
+      "R040"
+    ],
+    "proposed_edit": null,
+    "edit_how": "two spellings of one word appear the same number of times; code cannot tell which is the misspelling",
+    "could_auto_apply": false,
+    "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply",
+    "occurrences": [
+      {
+        "field": "solution",
+        "text": "Canola",
+        "raw": "Canola",
+        "raw_unique": true
+      },
+      {
+        "field": "question",
+        "text": "Canolla",
+        "raw": "Canolla",
+        "raw_unique": true
+      }
+    ]
+  },
+  {
+    "questionId": "617fa18efd53ff1629ed890f",
+    "repair": "spelling",
+    "check": "run_together_words",
+    "strength": "signal",
+    "field": "question",
+    "detail": "'ofleaf' looks like two words run together: 'of leaf'.",
+    "evidence_text": "ofleaf",
+    "evidence_raw": "of<span style=\"color:#000000\">leaf",
+    "evidence_raw_unique": true,
+    "reports_on_question": [
+      "R013"
+    ],
+    "proposed_edit": {
+      "field": "question",
+      "find": "of<span style=\"color:#000000\">leaf",
+      "replace": "of <span style=\"color:#000000\">leaf"
+    },
+    "edit_how": "code: split run-together words",
+    "could_auto_apply": false,
+    "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply"
+  },
+  {
+    "questionId": "617fa18efd53ff1629ed890f",
+    "repair": "spelling",
+    "check": "spelling_suspect",
+    "strength": "signal",
+    "field": "solution",
+    "detail": "'abaxial' and 'adaxial' differ by one edit; one is likely misspelled.",
+    "evidence_text": "abaxial",
+    "evidence_raw": "abaxial",
+    "evidence_raw_unique": true,
+    "reports_on_question": [
+      "R013"
+    ],
+    "proposed_edit": null,
+    "edit_how": "two spellings of one word appear the same number of times; code cannot tell which is the misspelling",
+    "could_auto_apply": false,
+    "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply",
+    "occurrences": [
+      {
+        "field": "solution",
+        "text": "abaxial",
+        "raw": "abaxial",
+        "raw_unique": true
+      },
+      {
+        "field": "solution",
+        "text": "adaxial",
+        "raw": "adaxial",
+        "raw_unique": true
+      }
+    ]
+  },
+  {
+    "questionId": "68c801bc1b1dbc16dc93bf2b",
+    "repair": "markup_leak",
+    "check": "alignment_marker_leak",
+    "strength": "definite",
+    "field": "solution",
+    "detail": "2 lone '&' token(s) in solution MathML (LaTeX alignment markers); a browser shows them as a visible '&'.",
+    "evidence_text": "&",
+    "evidence_raw": "mi>K</mi><mi>&</mi><mo>&#x00",
+    "evidence_raw_unique": true,
+    "reports_on_question": [
+      "R039"
+    ],
+    "proposed_edit": null,
+    "edit_how": "markup not convertible by code",
+    "could_auto_apply": false,
+    "why": "definite and low-risk, but code builds no edit for this check yet"
+  },
+  {
+    "questionId": "622f08d7b70e4b50e4500a1b",
+    "repair": "markup_leak",
+    "check": "alignment_marker_leak",
+    "strength": "definite",
+    "field": "solution",
+    "detail": "2 lone '&' token(s) in solution MathML (LaTeX alignment markers); a browser shows them as a visible '&'.",
+    "evidence_text": "&",
+    "evidence_raw": "b><mi>&</mi><m",
+    "evidence_raw_unique": true,
+    "reports_on_question": [
+      "R010",
+      "R009"
+    ],
+    "proposed_edit": null,
+    "edit_how": "markup not convertible by code",
+    "could_auto_apply": false,
+    "why": "definite and low-risk, but code builds no edit for this check yet"
+  }
+]
