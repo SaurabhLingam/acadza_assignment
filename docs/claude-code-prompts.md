@@ -548,3 +548,131 @@ session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
 <summary>Background command "Rerun R006-R008 with 20b swap and triage_v3" completed (exit code 0)</summary>
 </task-notification>
 ```
+
+---
+
+### 2026-11-11T07:46:07+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+
+
+<pasted_content id="8dee">
+/design Redesign the faculty review console in console/ from scratch. Keep the data pipeline (public/data.json) and the sanitization; replace the UI. Stage 1 showed everything at once; this version must be simple.
+
+WHO AND WHY
+A faculty member, tired, at 10 PM, clearing dozens of student error reports on JEE/NEET questions. For each case they must see in 2 seconds what is wrong and what will change, trust it, and act with one keystroke. Every design choice serves that. When in doubt, show less.
+
+PRINCIPLES
+- One case at a time, inbox-style.
+- Every case answers three questions, top to bottom: What's wrong? How sure are we? What changes?
+- Primary actions always in the same place.
+- Everything else is secondary and collapsed by default.
+- Never show a claim the evidence below contradicts.
+- Restrained visuals: one accent colour; red/green only for diffs and pass/fail marks; generous spacing; no pill soup.
+
+LAYOUT
+- Top bar (thin): product name, "Precomputed results, no live AI calls" as subtle text, progress "3 of 10 need you", Audit log, theme toggle.
+- Left: slim, collapsible queue (toggle with \). Two tabs: "Needs you" (default) and "Done". An "Other" menu holds Auto-applied, No change and Bonus findings. Rows: urgency dot, short title ("Answer key C → A"), topic, reporter count. Nothing more.
+- Centre: the case.
+- Bottom: fixed action bar.
+
+THE CASE VIEW, top to bottom
+1. Small context line: harm tier ("Blocks the right answer" / "Wrong solution" / "Cosmetic" / "Classification"), subject · chapter, number of students.
+2. WHAT'S WRONG: one plain sentence as the headline, e.g. "The answer key says C (130 V), but the correct answer is A (50 V)." or "No option is correct as written." or "Option C is blank, and it is the keyed answer."
+3. HOW SURE: one honest line, e.g. "Two independent AI solvers and the stored solution all give A." or "Every option was checked wrong by two models, and the solution contradicts itself." Then a "Show evidence" toggle.
+   - For answer cases, the evidence is a compact grid: rows = options, columns = Solver 1, Solver 2, Option check, Stored solution, Key. Cells ✓ / ✗ / –. Model names as column tooltips.
+   - Below the grid, a "Raw evidence" link with the exact evidence string from results.json.
+4. WHAT CHANGES: the rendered question (native MathML, serif) with a before/after diff:
+   - Text edits: side-by-side Before | After, changed spans highlighted red/green.
+   - Answer-key edits: a single clear line "Answer: C (130 V) → A (50 V)" above the question; the keyed option tagged KEY in the question, the new one tagged NEW.
+   - Faculty-only repairs (no edit): no diff; show "Suggested fix (AI suggestion, not applied): …" when the evidence supports one.
+   - No-change cases: "Nothing changes", with why.
+5. Secondary sections, collapsed by default, each one line when closed:
+   - Stored solution (auto-expanded when the solution is the evidence, with flagged spans highlighted).
+   - Student reports: each comment as plain text, with its reply preview underneath (editable in Edit mode).
+   - Details: report ids, route, confidence, repair type.
+
+ACTIONS (bottom bar, always in the same place)
+- Edits that will go live: Approve (A) · Edit (E) · Reject (R).
+- Faculty-only repairs: Confirm defect (A) · Not a defect (R).
+- Auto-applied items: Keep (A) · Undo (U).
+- No-change items: Looks right (A) · Flag (R).
+- Edit opens inline editing of the replacement text and the reply. Re-run the browser-side guards (allowed fields, find text unique, no literal ^ \ _{ markup, spelling edits can't change digits or symbols, answer_form edits additive only) and block invalid edits with a one-line reason.
+- Reject / Not a defect / Flag ask for a reason: quick chips ("AI is wrong", "Needs a rewrite", "Not a defect", "Other") plus an optional note.
+- After any action: small undo toast for 5 seconds, then the next case loads automatically.
+- Keyboard: J/K next/previous, A/E/R/U actions, \ toggles queue, ? shows shortcuts.
+
+AUDIT LOG
+- Ask the reviewer's name once (small dialog, remembered).
+- Every action records: time, reviewer, question id, report ids, action, before/after, reason/note.
+- A drawer lists entries newest first, with Export JSON.
+- State plainly in the drawer: "Stored in this browser."
+
+QUEUE ORDER
+Harm first, then reach (distinct reporters), then certainty, as in D-026. Show one muted "Why it's here" line on the case, not in the list.
+
+OTHER STATES
+- Empty "Needs you": a calm "All caught up" message with counts of what was done.
+- Bonus findings: same case layout; the headline is the finding, the diff is the proposed edit when one exists, marked "found without a student report".
+- Display / app / language reports: headline says what the student reported and that the question content is fine; actions Looks right / Flag.
+
+VISUAL STYLE
+Dark by default, light toggle. Calm, dense where it helps, generous elsewhere, Linear-like restraint. Sans-serif UI, serif for question text, monospace only for ids. Readable at 100% zoom on a laptop. Visible focus states for keyboard use.
+
+CONSTRAINTS
+Static site (React + Vite + TS), no backend, no API keys. Sanitize all HTML (allow MathML, strip scripts and handlers); comments as plain text only. Must deploy on Vercel with root directory console.
+
+When done: run it, check it with headless screenshots, fix anything broken, then commit and push. Show me screenshots of 695ee00b (R034, no option correct), 60f744b3 (answer key C → A), 6263d75b (solution fix), and the empty "Needs you" state. Then give me exact Vercel deploy steps.
+</pasted_content id="8dee">
+
+```
+
+---
+
+### 2026-11-11T07:55:02+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+<task-notification>
+<task-id>bjll0caek</task-id>
+<tool-use-id>toolu_01V8NsiNvuQM7PoBMHi5MPT1</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\77f3d0e8-4bb1-44c9-8f08-2d117cd48778\tasks\bjll0caek.output</output-file>
+<status>completed</status>
+<summary>Background command "Install Playwright in a scratch virtualenv" completed (exit code 0)</summary>
+</task-notification>
+```
+
+---
+
+### 2026-11-11T08:00:19+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+<task-notification>
+<task-id>brueq297g</task-id>
+<tool-use-id>toolu_01Rf38KxxeMkGSNAqTWs6rDc</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\77f3d0e8-4bb1-44c9-8f08-2d117cd48778\tasks\brueq297g.output</output-file>
+<status>failed</status>
+<summary>Background command "Serve built console on port 4173" failed with exit code 1</summary>
+</task-notification>
+```
+
+---
+
+### 2026-11-11T08:05:43+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+<task-notification>
+<task-id>bpw127m2q</task-id>
+<tool-use-id>toolu_01WYVqrFYjkjjzWdrTEFq9Vi</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\77f3d0e8-4bb1-44c9-8f08-2d117cd48778\tasks\bpw127m2q.output</output-file>
+<status>failed</status>
+<summary>Background command "Serve built console on port 4173" failed with exit code 127</summary>
+</task-notification>
+```

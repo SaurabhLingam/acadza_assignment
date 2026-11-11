@@ -1,93 +1,92 @@
-import type { Bonus, Case, Data, Group, TabKey, Tone } from "./types";
+import type { ActionId, Decision, Item, ListKey, Mode } from "./types";
 
-export const TABS: { key: TabKey; label: string; hint: string }[] = [
-  { key: "needs", label: "Needs you", hint: "Routed to faculty: approve, edit or reject" },
-  { key: "auto", label: "Auto-applied", hint: "Already live; undo if wrong" },
-  { key: "nochange", label: "No change", hint: "Spot-check: nothing was changed" },
-  { key: "bonus", label: "Bonus", hint: "Bonus findings: defects no student reported" },
-];
+export const LISTS: Record<ListKey, string> = {
+  needs: "Needs you",
+  done: "Done",
+  auto: "Auto-applied",
+  nochange: "No change",
+  bonus: "Bonus findings",
+};
 
-const ROUTE_TAB: Record<string, TabKey> = { faculty_review: "needs", auto_apply: "auto", no_change: "nochange" };
+const CERT = { strong: 0, partial: 1, weak: 2 } as const;
 
-// Certainty: agreeing evidence first (quick wins), then mixed, then contested.
-const TONE_RANK: Record<Tone, number> = { ok: 0, neutral: 1, warn: 1, bad: 2 };
-
-/** Urgency = harm, then reach (distinct reporters), then certainty. Harm always dominates:
- *  a cosmetic fix reported by five students still sits below a wrong key reported by one. */
-export function byUrgency(a: Group, b: Group): number {
-  return (
-    b.harm - a.harm ||
-    b.reach - a.reach ||
-    TONE_RANK[a.tone] - TONE_RANK[b.tone] ||
-    b.confidence - a.confidence ||
-    a.questionId.localeCompare(b.questionId)
-  );
+/** D-026: harm first, then reach (distinct reporters), then certainty (agreeing evidence first). */
+export function byUrgency(a: Item, b: Item): number {
+  return b.tier - a.tier || b.reach - a.reach || CERT[a.certainty] - CERT[b.certainty] ||
+    b.confidence - a.confidence || a.key.localeCompare(b.key);
 }
 
-function caseRank(a: Case, b: Case) {
-  return b.harm - a.harm || TONE_RANK[a.certaintyTone] - TONE_RANK[b.certaintyTone] || a.reportId.localeCompare(b.reportId);
-}
-
-function bonusTone(b: Bonus): Tone {
-  if (b.source === "manual_review" || b.strength === "definite") return "ok";
-  return "warn";
-}
-
-export function bonusWhy(b: Bonus): string {
-  const src = b.source === "manual_review" ? `manual review (${b.found_by})` : `${b.strength} code check`;
-  return `${b.harmLabel} · ${src} · ${b.could_auto_apply ? "could auto-apply" : "needs approval"}`;
-}
-
-export function buildGroups(data: Data): Record<TabKey, Group[]> {
-  const out: Record<TabKey, Group[]> = { needs: [], auto: [], nochange: [], bonus: [] };
-  const byKey = new Map<string, Case[]>();
-  for (const c of data.cases) {
-    const tab = ROUTE_TAB[c.route];
-    const k = `${tab}:${c.questionId}`;
-    if (!byKey.has(k)) byKey.set(k, []);
-    byKey.get(k)!.push(c);
+export function listOf(items: Item[], key: ListKey, decisions: Record<string, Decision>): Item[] {
+  const sorted = [...items].sort(byUrgency);
+  switch (key) {
+    case "needs": return sorted.filter((i) => i.route === "faculty_review" && !decisions[i.key]);
+    case "done": return items.filter((i) => decisions[i.key]).sort((a, b) => decisions[b.key].at.localeCompare(decisions[a.key].at));
+    case "auto": return sorted.filter((i) => i.route === "auto_apply");
+    case "nochange": return sorted.filter((i) => i.route === "no_change");
+    case "bonus": return sorted.filter((i) => i.route === "bonus");
   }
-  for (const [k, cs] of byKey) {
-    cs.sort(caseRank);
-    const top = cs[0];
-    const tab = k.split(":")[0] as TabKey;
-    out[tab].push({
-      key: k, tab, questionId: top.questionId, cases: cs, bonus: [],
-      harm: top.harm, reach: top.reach, tone: top.certaintyTone, confidence: top.confidence,
-      headline: top.headline, why: top.why,
-    });
-  }
-  const bq = new Map<string, Bonus[]>();
-  for (const b of data.bonus) {
-    if (!bq.has(b.questionId)) bq.set(b.questionId, []);
-    bq.get(b.questionId)!.push(b);
-  }
-  for (const [qid, bs] of bq) {
-    bs.sort((a, b) => b.harm - a.harm || TONE_RANK[bonusTone(a)] - TONE_RANK[bonusTone(b)]);
-    const top = bs[0];
-    out.bonus.push({
-      key: `bonus:${qid}`, tab: "bonus", questionId: qid, cases: [], bonus: bs,
-      harm: top.harm, reach: 0, tone: bonusTone(top), confidence: 0,
-      headline: top.headline + (bs.length > 1 ? `  +${bs.length - 1} more` : ""),
-      why: bonusWhy(top),
-    });
-  }
-  for (const t of Object.keys(out) as TabKey[]) out[t].sort(byUrgency);
-  return out;
 }
 
-export function casesOnQuestion(data: Data, qid: string): Case[] {
-  return data.cases.filter((c) => c.questionId === qid).sort((a, b) => a.reportedAt.localeCompare(b.reportedAt));
+export function modeOf(i: Item): Mode {
+  if (i.route === "auto_apply") return "auto";
+  if (i.route === "no_change") return "check";
+  return i.edit ? "live" : "faculty";
 }
 
-export const HARM_CLASS = ["harm-0", "harm-1", "harm-2", "harm-3"];
+export interface ActionDef { id: ActionId; key: string; label: string; kind: "primary" | "plain" | "danger"; needsReason?: boolean; edit?: boolean }
+
+export const ACTIONS: Record<Mode, ActionDef[]> = {
+  live: [
+    { id: "approve", key: "A", label: "Approve", kind: "primary" },
+    { id: "approve_edited", key: "E", label: "Edit", kind: "plain", edit: true },
+    { id: "reject", key: "R", label: "Reject", kind: "danger", needsReason: true },
+  ],
+  faculty: [
+    { id: "confirm", key: "A", label: "Confirm defect", kind: "primary" },
+    { id: "not_defect", key: "R", label: "Not a defect", kind: "danger", needsReason: true },
+  ],
+  auto: [
+    { id: "keep", key: "A", label: "Keep", kind: "primary" },
+    { id: "keep_edited", key: "E", label: "Edit", kind: "plain", edit: true },
+    { id: "undo_edit", key: "U", label: "Undo", kind: "danger", needsReason: true },
+  ],
+  check: [
+    { id: "looks_right", key: "A", label: "Looks right", kind: "primary" },
+    { id: "flag", key: "R", label: "Flag", kind: "danger", needsReason: true },
+  ],
+};
+
+export const PAST: Record<ActionId, string> = {
+  approve: "Approved", approve_edited: "Approved with edits", reject: "Rejected",
+  confirm: "Confirmed as a defect", not_defect: "Marked not a defect",
+  keep: "Kept", keep_edited: "Kept with edits", undo_edit: "Undone",
+  looks_right: "Marked as right", flag: "Flagged",
+};
+
+export const REASONS = ["AI is wrong", "Needs a rewrite", "Not a defect", "Other"];
 
 export function fmtTime(iso: string): string {
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  return isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-export function prettyField(f: string): string {
-  return { question: "Question", solution: "Solution", answer: "Answer key", questionType: "Question type", chapter: "Chapter" }[f] ?? f;
+// ---------------------------------------------------------------- browser storage (per-viewer, may be unavailable)
+
+export const KEYS = { decisions: "rr.decisions.v1", audit: "rr.audit.v1", reviewer: "rr.reviewer", theme: "rr.theme", queue: "rr.queue" };
+
+export function load<T>(k: string, fallback: T): T {
+  try {
+    const v = localStorage.getItem(k);
+    return v == null ? fallback : (JSON.parse(v) as T);
+  } catch {
+    return fallback;
+  }
+}
+
+export function save(k: string, v: unknown): void {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch {
+    /* private window or storage blocked: the session still works, it just isn't remembered */
+  }
 }

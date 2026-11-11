@@ -1,186 +1,244 @@
 import { useState } from "react";
-import type { Bonus, Case, Diff, Group, Question } from "../types";
-import { bonusWhy, fmtTime, prettyField } from "../model";
-import { ChangePill, Chip, Html, Section } from "./bits";
+import type { Decision, Draft, Item, Question } from "../types";
+import { PAST, fmtTime } from "../model";
+import { EvidenceGrid, Fold, Html } from "./ui";
 
-const ROUTE_LABEL: Record<string, string> = { auto_apply: "auto-applied", faculty_review: "needs you", no_change: "no change" };
+interface Props {
+  item: Item;
+  q: Question;
+  decision?: Decision;
+  draft: Draft | null;
+  setDraft: (d: Draft) => void;
+  draftDiff: { before: string; after: string } | null;
+  guardError: string | null;
+}
 
-function SideBySide({ diff }: { diff: Diff }) {
-  if (diff.error) return <div className="note bad">{diff.error}</div>;
+const STATUS: Record<string, string> = {
+  faculty_review: "Waiting for you",
+  auto_apply: "Already live",
+  no_change: "Nothing was changed",
+  bonus: "Found without a student report",
+};
+
+export function CaseView({ item, q, decision, draft, setDraft, draftDiff, guardError }: Props) {
+  const [showEvidence, setShowEvidence] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
+  const textDiffOnSolution = item.diff?.field === "solution";
+  const [open, setOpen] = useState<Record<string, boolean>>({
+    question: false,
+    solution: item.solutionOpen && !textDiffOnSolution,
+    reports: false,
+    details: false,
+  });
+  const toggle = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
+  const editing = draft !== null;
+  const students = item.source === "bonus" ? "no student reports" : `${item.reach} student${item.reach === 1 ? "" : "s"}`;
+  const inCase = item.reports.filter((r) => r.inThisCase);
+
+  return (
+    <article className="case" aria-labelledby="case-title">
+      <div className="context">
+        <span className={`tier tier-${item.tier}`}>{item.tierLabel}</span>
+        <span className="sep">·</span>
+        <span>{q.subject} · {q.chapter}</span>
+        <span className="sep">·</span>
+        <span>{students}</span>
+        <span className="status">{STATUS[item.route]}</span>
+      </div>
+
+      {decision && (
+        <p className="decided" role="status">
+          {PAST[decision.action]} by {decision.reviewer} · {fmtTime(decision.at)}
+          {decision.reason ? ` · ${decision.reason}` : ""}{decision.note ? ` (“${decision.note}”)` : ""}
+        </p>
+      )}
+
+      {/* 1. What's wrong */}
+      <h1 id="case-title" className="sentence">{item.sentence}</h1>
+
+      {/* 2. How sure */}
+      <p className="sure">
+        {item.sure}{" "}
+        <button className="link" onClick={() => setShowEvidence((v) => !v)} aria-expanded={showEvidence}>
+          {showEvidence ? "Hide evidence" : "Show evidence"}
+        </button>
+      </p>
+      {showEvidence && (
+        <div className="evidence">
+          {item.grid && <EvidenceGrid grid={item.grid} />}
+          {item.grid && <p className="legend">✓ the source picks this · in the check column, <span className="pass">✓</span> judged right and <span className="fail">✗</span> judged wrong · – no signal. Hover a column for the model.</p>}
+          {item.routeWhy.length > 0 && <p className="muted small">Why this route: {item.routeWhy.join("; ")}</p>}
+          <button className="link small" onClick={() => setShowRaw((v) => !v)} aria-expanded={showRaw}>
+            {showRaw ? "Hide raw evidence" : "Raw evidence"}
+          </button>
+          {showRaw && (
+            <div className="raw">
+              {item.rawEvidence.map((r, i) => (
+                <p key={i}>{r.reportId && <span className="id">{r.reportId}</span>} {r.evidence}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <p className="why">Why it's here: {item.why}</p>
+
+      {/* 3. What changes */}
+      <section className="changes" aria-label="What changes">
+        <h2 className="label">What changes</h2>
+        <Changes item={item} q={q} draft={draft} setDraft={setDraft} draftDiff={draftDiff} guardError={guardError} />
+      </section>
+
+      {/* 4. Secondary, collapsed */}
+      <div className="folds">
+        {textDiffOnSolution && (
+          <Fold title="Question" summary="the question this solution belongs to" open={open.question} onToggle={() => toggle("question")}>
+            <Html html={item.questionHtml} className="paper" />
+          </Fold>
+        )}
+        {!textDiffOnSolution && (
+          <Fold title="Stored solution" summary={item.solutionHtml ? "flagged parts marked" : undefined}
+            open={open.solution} onToggle={() => toggle("solution")}>
+            <Html html={item.solutionHtml ?? q.solutionHtml} className="paper" />
+          </Fold>
+        )}
+        <Fold title="Student reports" summary={item.reports.length ? `${item.reports.length}` : "none"}
+          open={open.reports || editing} onToggle={() => toggle("reports")}>
+          {item.reports.length === 0 && <p className="muted">No student reported this question.</p>}
+          <ul className="reports">
+            {item.reports.map((r) => (
+              <li key={r.reportId} className={r.inThisCase ? "" : "other"}>
+                <p className="report-meta">
+                  <span className="id">{r.reportId}</span> · {r.source} · {fmtTime(r.reportedAt)}
+                  {!r.inThisCase && <> · different outcome ({r.verdict}{r.repair ? `, ${r.repair}` : ""})</>}
+                </p>
+                {/* untrusted: plain text only */}
+                <p className="comment">{r.comment || <em className="muted">(empty comment)</em>}</p>
+                {r.inThisCase && editing && draft ? (
+                  <label className="reply-edit">
+                    <span className="label">Reply to the student</span>
+                    <textarea value={draft.replies[r.reportId] ?? r.reply} rows={3}
+                      onChange={(e) => setDraft({ ...draft, replies: { ...draft.replies, [r.reportId]: e.target.value } })} />
+                  </label>
+                ) : (
+                  <p className="reply"><span className="label">Reply</span> {r.reply}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+          {inCase.length > 0 && !editing && <p className="muted small">Press E to edit replies.</p>}
+        </Fold>
+        <Fold title="Details" summary={`${item.reportIds.join(", ") || "bonus finding"} · ${item.route.replace("_", " ")}`}
+          open={open.details} onToggle={() => toggle("details")}>
+          <dl className="details">
+            <dt>Reports</dt><dd className="id">{item.reportIds.join(", ") || "none (found without a report)"}</dd>
+            <dt>Question</dt><dd className="id">{item.questionId}</dd>
+            <dt>Route</dt><dd>{item.route}</dd>
+            <dt>Verdict / repair</dt><dd>{item.verdict}{item.repair ? ` / ${item.repair}` : ""}</dd>
+            {item.source === "report" && <><dt>Confidence</dt><dd>{item.confidence.toFixed(2)}</dd></>}
+            <dt>Decided by</dt><dd>{item.decidedBy || "–"}</dd>
+            <dt>Stored key</dt><dd>{q.key}</dd>
+          </dl>
+        </Fold>
+      </div>
+    </article>
+  );
+}
+
+function Changes({ item, q, draft, setDraft, draftDiff, guardError }: Omit<Props, "decision">) {
+  const editing = draft !== null;
+  const e = item.edit;
+
+  if (editing && draft && e && (e.field === "question" || e.field === "solution")) {
+    return (
+      <>
+        <label className="edit-field">
+          <span className="label">Replacement text {draft.plain ? "" : "(contains formatting markup; edit with care)"}</span>
+          <textarea className={draft.plain ? "" : "mono"} value={draft.replace} rows={draft.plain ? 2 : 4} autoFocus
+            onChange={(ev) => setDraft({ ...draft, replace: ev.target.value })} />
+        </label>
+        {guardError ? <p className="guard-fail" role="alert">✗ {guardError}</p> : <p className="guard-ok">✓ Passes every edit guard</p>}
+        {draftDiff && <SideBySide before={draftDiff.before} after={draftDiff.after} field={e.field} />}
+      </>
+    );
+  }
+  if (editing && draft && e && e.field === "answer") {
+    return (
+      <>
+        <label className="edit-field">
+          <span className="label">New answer key {q.type === "mcq" ? "(letters, comma-separated)" : ""}</span>
+          <input value={draft.answer} autoFocus onChange={(ev) => setDraft({ ...draft, answer: ev.target.value })} />
+        </label>
+        {guardError ? <p className="guard-fail" role="alert">✗ {guardError}</p> : <p className="guard-ok">✓ Passes every edit guard</p>}
+        <Html html={item.questionHtml} className="paper" />
+      </>
+    );
+  }
+
+  if (item.answerChange) {
+    return (
+      <>
+        <p className="answer-line">
+          <span className="label-inline">Answer</span>
+          <span className="del-text">{item.answerChange.from}</span>
+          <span className="arrow">→</span>
+          <span className="ins-text">{item.answerChange.to}</span>
+        </p>
+        <Html html={item.questionHtml} className="paper" />
+      </>
+    );
+  }
+  if (item.typeChange) {
+    return (
+      <>
+        <p className="answer-line">
+          <span className="label-inline">Question type</span>
+          <span className="del-text">{item.typeChange.from === "mcq" ? "multiple-correct" : item.typeChange.from}</span>
+          <span className="arrow">→</span>
+          <span className="ins-text">{item.typeChange.to === "scq" ? "single-correct" : item.typeChange.to}</span>
+        </p>
+        <Html html={item.questionHtml} className="paper" />
+      </>
+    );
+  }
+  if (item.diff) {
+    if (item.diff.error) return <p className="guard-fail">{item.diff.error}</p>;
+    return <SideBySide before={item.diff.before ?? ""} after={item.diff.after ?? ""} field={item.diff.field} />;
+  }
+  if (item.nothing) {
+    return (
+      <>
+        <p className="nothing">{item.nothing}</p>
+        <Html html={item.questionHtml} className="paper" />
+      </>
+    );
+  }
+  return (
+    <>
+      {item.suggestion ? (
+        <div className="suggestion">
+          <p><span className="label-inline">Suggested fix</span> <span className="muted">(AI suggestion, not applied)</span></p>
+          <p className="suggestion-text">{item.suggestion.text}</p>
+          {item.suggestion.detail && <p className="muted small">{item.suggestion.detail}</p>}
+        </div>
+      ) : (
+        <p className="nothing">No automatic change. Your decision is recorded for the content team.</p>
+      )}
+      <Html html={item.questionHtml} className="paper" />
+    </>
+  );
+}
+
+function SideBySide({ before, after, field }: { before: string; after: string; field: string }) {
   return (
     <div className="sbs">
-      <div className="sbs-col">
-        <div className="sbs-label">Before</div>
-        <Html html={diff.before ?? ""} className="paper" />
+      <div>
+        <p className="sbs-label">Before · {field}</p>
+        <Html html={before} className="paper" />
       </div>
-      <div className="sbs-col">
-        <div className="sbs-label after">After</div>
-        <Html html={diff.after ?? ""} className="paper" />
+      <div>
+        <p className="sbs-label">After · {field}</p>
+        <Html html={after} className="paper" />
       </div>
     </div>
-  );
-}
-
-function QuestionCard({ q, html, label = "Question" }: { q: Question; html?: string; label?: string }) {
-  return (
-    <Section title={label} aside={<span className="muted small">{q.type.replace("integerQuestion", "integer")} · key {q.answer.long}</span>}>
-      <Html html={html ?? q.questionHtml} className="paper" />
-    </Section>
-  );
-}
-
-function SolutionCard({ q }: { q: Question }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Section title="Stored solution" aside={<button className="link" onClick={() => setOpen(!open)}>{open ? "Hide" : "Show"}</button>}>
-      {open && <Html html={q.solutionHtml} className="paper" />}
-    </Section>
-  );
-}
-
-function RawEvidence({ c }: { c: Case }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="raw">
-      <button className="link" onClick={() => setOpen(!open)} aria-expanded={open}>
-        {open ? "Hide raw evidence" : "Raw evidence"}
-      </button>
-      {open && (
-        <div className="raw-body">
-          <p className="raw-line"><b>Engine evidence</b> {c.evidence}</p>
-          {c.basis.length > 0 && <p className="raw-line"><b>Basis</b> {c.basis.join(" · ")}</p>}
-          {c.notes.length > 0 && <p className="raw-line"><b>Notes</b> {c.notes.join(" · ")}</p>}
-          {c.routeWhy.length > 0 && <p className="raw-line"><b>Why this route</b> {c.routeWhy.join(" · ")}</p>}
-          {c.edit && <pre className="mono">{JSON.stringify(c.edit, null, 2)}</pre>}
-          <details>
-            <summary>Full signal record ({c.reportId})</summary>
-            <pre className="mono">{JSON.stringify(c.details, null, 2)}</pre>
-          </details>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Comments({ cases }: { cases: Case[] }) {
-  if (!cases.length) return null;
-  return (
-    <Section title={`Student reports on this question (${cases.length})`}>
-      <ul className="comments">
-        {cases.map((c) => (
-          <li key={c.reportId} className="comment">
-            <div className="comment-meta">
-              <span className="mono">{c.reportId}</span>
-              <span>{c.studentId}</span>
-              <span>{c.source}</span>
-              <span>{fmtTime(c.reportedAt)}</span>
-              <span className={`tag route-${c.route}`}>{ROUTE_LABEL[c.route]}</span>
-              <span className="muted">{c.verdict}{c.repair ? ` / ${c.repair}` : ""}</span>
-            </div>
-            {/* comments are untrusted: rendered as text, never as HTML */}
-            <blockquote className="comment-text">{c.comment || <i className="muted">(empty comment)</i>}</blockquote>
-            <div className="reply">
-              <div className="reply-label">Reply preview <span className="muted">· editing arrives in stage 2</span></div>
-              <textarea className="reply-text" value={c.reply} readOnly rows={Math.min(6, Math.max(2, Math.ceil(c.reply.length / 90)))} />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </Section>
-  );
-}
-
-function Change({ c, q }: { c: Case; q: Question }) {
-  const parts = [];
-  if (c.answerChange)
-    parts.push(
-      <Section key="a" title="Answer key change">
-        <ChangePill from={c.answerChange.from.long} to={c.answerChange.to.long} />
-      </Section>,
-    );
-  if (c.typeChange)
-    parts.push(
-      <Section key="t" title="Question type change">
-        <ChangePill from={c.typeChange.from} to={c.typeChange.to} />
-      </Section>,
-    );
-  if (c.diff)
-    parts.push(
-      <Section key="d" title={`${prettyField(c.diff.field)}: before / after`}
-        aside={<span className="muted small">changes marked; rendered, not raw</span>}>
-        <SideBySide diff={c.diff} />
-      </Section>,
-    );
-  if (!c.diff || c.diff.field !== "question") parts.push(<QuestionCard key="q" q={q} />);
-  if (!c.diff || c.diff.field !== "solution") parts.push(<SolutionCard key="s" q={q} />);
-  return <>{parts}</>;
-}
-
-export function CaseView({ group, q, allCases }: { group: Group; q: Question; allCases: Case[] }) {
-  const c = group.cases[0];
-  const others = group.cases.length > 1 ? group.cases.slice(1).filter((x) => x.headline !== c.headline) : [];
-  return (
-    <article className="case">
-      <header className="case-head">
-        <div className="eyebrow">
-          <span className={`harm-tag harm-${c.harm}`}>{c.harmLabel}</span>
-          <span>{q.subject} · {q.chapter}</span>
-          <span className="mono muted">{q.id.slice(0, 8)}</span>
-        </div>
-        <h1 className="headline">
-          {c.headline}
-          <span className="headline-meta"> · {c.reach} student{c.reach === 1 ? "" : "s"} · <span className={`tone-text-${c.certaintyTone}`}>{c.certainty}</span></span>
-        </h1>
-        <p className="why"><b>Why it's here:</b> {group.why}{c.routeWhy.length ? ` · held because: ${c.routeWhy.join("; ")}` : ""}</p>
-        {others.length > 0 && <p className="note">Other outcomes on this question: {others.map((o) => `${o.reportId}: ${o.headline}`).join(" · ")}</p>}
-      </header>
-      <div className="chips">{c.chips.map((ch, i) => <Chip key={i} chip={ch} />)}</div>
-      <RawEvidence c={c} />
-      <Change c={c} q={q} />
-      <Comments cases={allCases} />
-    </article>
-  );
-}
-
-export function BonusView({ group, q, allCases }: { group: Group; q: Question; allCases: Case[] }) {
-  return (
-    <article className="case">
-      <header className="case-head">
-        <div className="eyebrow">
-          <span className={`harm-tag harm-${group.harm}`}>Bonus finding</span>
-          <span>{q.subject} · {q.chapter}</span>
-          <span className="mono muted">{q.id.slice(0, 8)}</span>
-        </div>
-        <h1 className="headline">
-          {group.bonus.length} finding{group.bonus.length === 1 ? "" : "s"} no student reported
-          <span className="headline-meta"> · {allCases.length ? `${allCases.length} report(s) on this question were about something else` : "nobody reported this question"}</span>
-        </h1>
-      </header>
-      {group.bonus.map((b) => <BonusItem key={b.id} b={b} q={q} />)}
-      {!group.bonus.some((b) => (b.diff ?? b.flag)?.field === "question") && <QuestionCard q={q} />}
-      <Comments cases={allCases} />
-    </article>
-  );
-}
-
-function BonusItem({ b, q }: { b: Bonus; q: Question }) {
-  const view = b.diff ?? b.flag;
-  return (
-    <Section verbatim title={b.headline} aside={<span className={`tag ${b.could_auto_apply ? "route-auto_apply" : "route-faculty_review"}`}>{b.could_auto_apply ? "could auto-apply" : "needs approval"}</span>}>
-      <p className="why"><span className={`harm-tag harm-${b.harm}`}>{b.harmLabel}</span> {bonusWhy(b)}</p>
-      <p className="detail">{b.detail}</p>
-      <p className="muted small">{b.why}</p>
-      {b.field === "chapter" && <ChangePill from={q.chapter} to="faculty to choose" />}
-      {b.occurrences && b.occurrences.length > 0 && (
-        <p className="small">Occurrences: {b.occurrences.map((o, i) => <span key={i} className="occ"><span className="mono">{o.text}</span> in {o.field}</span>)}</p>
-      )}
-      {b.diff && <SideBySide diff={b.diff} />}
-      {!b.diff && view?.flagged && (
-        <>
-          <div className="sbs-label">{prettyField(view.field)}, finding marked</div>
-          <Html html={view.flagged} className="paper" />
-        </>
-      )}
-    </Section>
   );
 }

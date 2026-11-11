@@ -1,16 +1,21 @@
 """Bake everything the faculty console shows into console/public/data.json.
 
-    python console/scripts/build_data.py        # run from the repo root
+    python console/scripts/build_data.py        # run from the repo root (npm run data)
 
-Reads data/questions.json, data/reports.json, results.json, the evidence for that run
-(logs/runs/<run>/details.jsonl, located via logs/run-summary.json) and bonus_findings.json.
-Applies each edit to the stored HTML so the console shows before/after without computing anything,
-and works out headline, evidence chips and urgency in one place (here), not in the browser.
+Reads data/questions.json, data/reports.json, data/taxonomy.json, results.json, the evidence of the run that
+produced it (logs/runs/<run>/details.jsonl, located via logs/run-summary.json) and bonus_findings.json.
+
+One queue item per question per route (the reports on it share an outcome), plus one per bonus finding.
+Each item carries a view model the browser only renders:
+  sentence  - what's wrong, one plain sentence
+  sure      - how sure, one line computed from the same counts as the evidence grid (so it cannot claim more
+              than the grid shows)
+  grid      - for answer cases: options x sources (solver 1, solver 2, option check, stored solution, key)
+  change    - before/after HTML with the edit applied, the answer change, or a suggestion / "nothing changes"
 No LLM calls, no API keys. Never reads docs/eval-labels.csv.
 """
 from __future__ import annotations
 
-import html
 import json
 import math
 import re
@@ -23,44 +28,72 @@ sys.path.insert(0, str(ROOT))
 
 from engine import config  # noqa: E402
 from engine.checks import build_vocab, parse_question, run_checks  # noqa: E402
-from engine.loader import load_questions, load_reports  # noqa: E402
-from engine.parse import html_to_text  # noqa: E402
+from engine.loader import load_questions, load_reports, load_taxonomy  # noqa: E402
+from engine.parse import html_to_text, locate_raw  # noqa: E402
 
 OUT = ROOT / "console" / "public" / "data.json"
 
-# Harm: does the defect stop a student getting the right answer?
-HARM_BLOCKS = {"answer_key", "stem_data", "unsound", "type_mismatch", "diagram", "wrong_question"}
-HARM_MIDDLE = {"solution_fix", "solution_missing", "identical_options", "option_repair"}
-HARM_LABEL = {3: "Blocks the right answer", 2: "Wrong solution or options", 1: "Cosmetic", 0: "No defect"}
-
-VERDICT_HEAD = {
-    "no_error": "No error", "display_issue": "Display issue, stored content is fine",
-    "app_issue": "App issue, not this question", "language_mode": "Language request",
-    "already_fixed": "Already fixed in the live record", "not_actionable": "Comment not actionable",
-}
-REPAIR_HEAD = {
-    "unsound": "No correct option as written", "diagram": "Figure missing or wrong",
-    "wrong_chapter": "Filed under the wrong chapter", "syllabus": "Outside the syllabus (student claim)",
-    "identical_options": "Two options are identical", "wrong_question": "Solution belongs to another question",
-    "solution_fix": "Solution has an error", "solution_missing": "Solution missing",
-    "option_repair": "An option is missing or blank", "stem_data": "Question is missing data",
-    "answer_form": "Answer form not stated", "spelling": "Spelling", "markup_leak": "Raw markup visible",
-    "exam_reference": "Exam tag in the question", "noise": "Stray text", "notation": "Notation",
-    "type_mismatch": "Wrong question type", "answer_key": "Answer key wrong",
-}
+TIER_BLOCKS = {"answer_key", "stem_data", "unsound", "type_mismatch", "diagram", "wrong_question"}
+TIER_SOLUTION = {"solution_fix", "solution_missing", "identical_options", "option_repair"}
+TIER_CLASS = {"wrong_chapter", "syllabus"}
+CERT_RANK = {"strong": 0, "partial": 1, "weak": 2}
 MODEL_NAME = {"openai/gpt-oss-120b": "gpt-oss-120b", "openai/gpt-oss-20b": "gpt-oss-20b",
-              "deepseek/deepseek-v4-flash": "DeepSeek"}
+              "deepseek/deepseek-v4-flash": "DeepSeek V4 Flash"}
+NUM_WORD = {0: "No", 1: "One", 2: "Both", 3: "Three"}
 
 
-def clip(s: str, n: int) -> str:
+_SUP = str.maketrans("0123456789+-−=()n", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁻⁼⁽⁾ⁿ")
+_SUB = str.maketrans("0123456789+-=()", "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎")
+
+
+def pretty(s):
+    """Clean-text notation (10^−2, m^2, L_0) as a reader sees it (10⁻², m², L₀), for display strings."""
+    if not isinstance(s, str):
+        return s
+    s = re.sub(r"\^(?:\(([+\-−]?[0-9n]+)\)|([+\-−]?[0-9n]+))", lambda m: (m[1] or m[2]).translate(_SUP), s)
+    s = re.sub(r"(?<=[A-Za-z])_(?:\(([0-9]+)\)|([0-9]+))", lambda m: (m[1] or m[2]).translate(_SUB), s)
+    return s
+
+
+def opt_letter(findings) -> str | None:
+    for f in findings:
+        if f.repair == "option_repair" and f.data:
+            return f.data.get("letter") or (f.data.get("missing") or [None])[0]
+    return None
+
+
+def clip(s, n: int) -> str:
     s = " ".join(str(s).split())
     return s if len(s) <= n else s[: n - 1].rstrip() + "…"
 
 
-# --------------------------------------------------------------------------- edits -> before/after HTML
+def model_of(role: str) -> str:
+    m = config.ROLES[role][1]
+    return MODEL_NAME.get(m, m.split("/")[-1])
 
-def _in_math(raw: str, i: int) -> tuple[int, int] | None:
-    """Bounds of the <math> element containing position i, if any."""
+
+def tier_of(verdict: str, repair: str | None, pq, findings) -> tuple[int, str]:
+    if verdict != "defect":
+        return 0, "No defect"
+    if repair in TIER_CLASS:
+        return 1, "Classification"
+    if repair == "option_repair":
+        if any(f.data.get("missing_is_keyed") or f.data.get("letter") in pq.answer.values
+               for f in findings if f.repair == "option_repair" and f.data):
+            return 3, "Blocks the right answer"
+        return 2, "Wrong solution or option"
+    if repair in TIER_BLOCKS:
+        return 3, "Blocks the right answer"
+    if repair in ("solution_fix", "solution_missing"):
+        return 2, "Wrong solution"
+    if repair in TIER_SOLUTION:
+        return 2, "Wrong solution or option"
+    return 1, "Cosmetic"
+
+
+# --------------------------------------------------------------------------- HTML marking
+
+def _in_math(raw: str, i: int):
     s = raw.rfind("<math", 0, i + 1)
     if s < 0 or raw.rfind("</math>", 0, i) > s:
         return None
@@ -69,8 +102,6 @@ def _in_math(raw: str, i: int) -> tuple[int, int] | None:
 
 
 def _whole_elements(seg: str) -> bool:
-    """True if seg is a sequence of complete elements (balanced tags, no stray text at the edges),
-    so it can be wrapped in an <mrow> without breaking the MathML tree."""
     seg = seg.strip()
     if not (seg.startswith("<") and seg.endswith(">")) or seg.startswith("</"):
         return False
@@ -85,51 +116,73 @@ def _whole_elements(seg: str) -> bool:
 
 
 def mark(raw: str, i: int, n: int, new: str | None, cls: str) -> str:
-    """raw with raw[i:i+n] replaced by `new` (None = keep) and the change highlighted.
-    Inside MathML the whole <math> element is wrapped (an HTML tag inside MathML would not render);
-    elsewhere <u>/<s> are used because the HTML parser repairs them across tag boundaries."""
+    """raw with raw[i:i+n] replaced by `new` (None = keep) and the span marked. Inside MathML an <mrow> wraps
+    whole elements (else the whole <math>); in HTML <u>/<s>, which the parser repairs across tag boundaries.
+    The browser has a TypeScript port of this (src/edit.ts) for edits made in the console."""
     seg = raw[i:i + n] if new is None else new
     out = raw[:i] + seg + raw[i + n:]
     m = _in_math(out, i)
     if m and _whole_elements(seg):
-        return out[:i] + f'<mrow class="{cls} chg-mrow">' + seg + "</mrow>" + out[i + len(seg):]
+        return out[:i] + f'<mrow class="{cls}">' + seg + "</mrow>" + out[i + len(seg):]
     if m:
         s, e = m
-        return out[:s] + f'<span class="{cls} chg-math">' + out[s:e] + "</span>" + out[e:]
-    tag = "s" if cls == "chg-del" else "u"
+        return out[:s] + f'<span class="{cls} whole-math">' + out[s:e] + "</span>" + out[e:]
+    tag = "s" if cls == "del" else "u"
     if not seg.strip():
-        return out[:i] + f'<{tag} class="{cls} chg-empty"></{tag}>' + out[i:]
+        return out[:i] + f'<{tag} class="{cls} caret"></{tag}>' + out[i:]
     return out[:i] + f'<{tag} class="{cls}">' + seg + f"</{tag}>" + out[i + len(seg):]
 
 
-def field_html(q, fld: str) -> str:
+def field_raw(q, fld: str) -> str:
     return q.solution_html if fld == "solution" else q.question_html
 
 
-def before_after(q, edit: dict | None) -> dict | None:
+def diff_of(q, edit: dict | None) -> dict | None:
     if not edit or edit.get("field") not in ("question", "solution"):
         return None
-    raw = field_html(q, edit["field"])
+    raw = field_raw(q, edit["field"])
     i = raw.find(edit["find"])
     if i < 0:
-        return {"field": edit["field"], "error": "find not located in the stored field"}
+        return {"field": edit["field"], "error": "The text to replace is no longer in the stored record."}
     n = len(edit["find"])
-    return {
-        "field": edit["field"],
-        "before": mark(raw, i, n, None, "chg-del"),
-        "after": mark(raw, i, n, edit["replace"], "chg-ins"),
-        "find_text": html_to_text(edit["find"]),
-        "replace_text": html_to_text(edit["replace"]),
-    }
+    return {"field": edit["field"], "before": mark(raw, i, n, None, "del"),
+            "after": mark(raw, i, n, edit["replace"], "ins"),
+            "findText": html_to_text(edit["find"]), "replaceText": html_to_text(edit["replace"])}
 
 
-def flagged(q, fld: str, ev: str | None) -> dict | None:
-    """Highlight a bonus finding's evidence in place (no edit)."""
-    if fld not in ("question", "solution") or not ev:
+def flag_spans(raw: str, quotes: list[str]) -> str | None:
+    """raw with each quoted clean-text span marked as flagged (unique locations only)."""
+    hits = []
+    for qt in quotes:
+        sub, uniq = locate_raw(raw, qt) if qt else (None, False)
+        if sub and uniq:
+            hits.append((raw.find(sub), len(sub)))
+    if not hits:
         return None
-    raw = field_html(q, fld)
-    i = raw.find(ev)
-    return None if i < 0 else {"field": fld, "flagged": mark(raw, i, len(ev), None, "chg-flag")}
+    for i, n in sorted(hits, reverse=True):
+        raw = mark(raw, i, n, None, "flag")
+    return raw
+
+
+_TRAIL = re.compile(r"(?:\s|&nbsp;|<br\s*/?>|</[a-zA-Z0-9]+>)*$")
+
+
+def tag_options(pq, tags: dict[str, str]) -> str:
+    """Question HTML with a small tag (KEY / NEW / OLD KEY) after the given options' text."""
+    raw = pq.q.question_html
+    spots = []
+    for L, label in tags.items():
+        if L not in pq.split.option_spans:
+            continue
+        s, e = pq.split.option_spans[L]
+        cut = s + _TRAIL.search(raw[s:e]).start()
+        if _in_math(raw, cut):
+            continue
+        cls = {"KEY": "tag-key", "NEW": "tag-new", "OLD KEY": "tag-old"}[label]
+        spots.append((cut, f' <span class="opt-tag {cls}">{label}</span>'))
+    for cut, t in sorted(spots, reverse=True):
+        raw = raw[:cut] + t + raw[cut:]
+    return raw
 
 
 # --------------------------------------------------------------------------- answers
@@ -140,165 +193,390 @@ def letters_of(x) -> list[str]:
     return sorted({p.strip().upper() for p in str(x or "").replace(" ", ",").split(",") if p.strip()})
 
 
-def show_answer(pq, value) -> dict:
-    """{'short': 'C', 'long': 'C (130 V)'} for an answer value."""
+def opt_label(pq, L: str) -> str:
+    t = pq.split.options_text.get(L, "")
+    return f"{L} ({clip(t, 26)})" if t else f"{L} (blank)"
+
+
+def show_answer(pq, value) -> str:
     if pq.q.qtype == "integerQuestion":
-        v = str(value[0] if isinstance(value, list) and value else value)
-        return {"short": v, "long": v}
+        return str(value[0] if isinstance(value, list) and value else value)
     ls = letters_of(value)
-    opt = pq.split.options_text
-    if ls and all(L in opt for L in ls):
-        return {"short": ", ".join(ls),
-                "long": ", ".join(f"{L} ({clip(opt[L], 28) or 'blank'})" for L in ls)}
-    return {"short": json.dumps(value, ensure_ascii=False), "long": json.dumps(value, ensure_ascii=False)}
+    if ls and all(L in pq.split.options_text for L in ls):
+        return ", ".join(opt_label(pq, L) for L in ls)
+    return json.dumps(value, ensure_ascii=False)
 
 
-def key_letters(pq) -> list[str]:
-    return list(pq.answer.values)
+def key_text(pq) -> str:
+    return show_answer(pq, pq.q.answer_raw) if pq.answer.values else json.dumps(pq.q.answer_raw, ensure_ascii=False)
 
 
-# --------------------------------------------------------------------------- headline, chips, urgency
-
-def harm_of(verdict: str, repair: str | None, pq, findings) -> int:
-    if verdict != "defect":
-        return 0
-    if repair == "option_repair":
-        lets = {f.data.get("letter") for f in findings if f.repair == "option_repair" and f.data}
-        return 3 if lets & set(key_letters(pq)) else 2
-    if repair in HARM_BLOCKS:
-        return 3
-    if repair in HARM_MIDDLE:
-        return 2
-    return 1
+def num_eq(a, b) -> bool:
+    try:
+        return math.isclose(float(a), float(b), rel_tol=config.INTEGER_REL_TOL, abs_tol=config.INTEGER_ABS_TOL)
+    except (TypeError, ValueError):
+        return False
 
 
-def certainty(res: dict, det: dict) -> tuple[str, str]:
-    """(short phrase, tone) for how sure the evidence is."""
-    if det.get("injection_blocks_auto_apply"):
-        return "injection attempt flagged", "bad"
-    if det.get("triage_contradicts"):
-        return "model disagrees with the checks", "bad"
-    t0 = (det.get("tier0") or {}).get("outcome")
-    if det.get("against", 0) > 0:
-        return "sources disagree", "warn"
-    if det.get("decided_by") == "triage":
-        return "model judgement, one code check", "warn"
-    if t0 in ("code_settled", "code_routed") and det.get("settled_tier") == 0:
-        return "decided by a code check", "ok"
-    if det.get("agree", 0) >= 2:
-        return "all sources agree", "ok"
-    return "limited evidence", "warn"
+# --------------------------------------------------------------------------- evidence grid
 
-
-def headline(res: dict, pq, ba: dict | None) -> str:
-    v, rep, e = res["verdict"], res["repair"], res.get("edit") or {}
-    if v != "defect":
-        h = VERDICT_HEAD.get(v, v)
-        if v == "no_error" and key_letters(pq):
-            h += f": key {show_answer(pq, pq.q.answer_raw)['short']} confirmed"
-        return h
-    if rep == "answer_key" and e.get("field") == "answer":
-        a, b = show_answer(pq, e["find"]), show_answer(pq, e["replace"])
-        if letters_of(e["find"]) == letters_of(e["replace"]):
-            return f"Answer key format fixed: {json.dumps(e['find'], ensure_ascii=False)} → {b['short']}"
-        return f"Answer key {a['short']} → {b['short']}"
-    if rep == "type_mismatch" and e.get("field") == "questionType":
-        return f"Question type {e['find']} → {e['replace']}"
-    if ba and "find_text" in ba:
-        f, r = ba["find_text"].strip(), ba["replace_text"].strip()
-        if r.startswith(f) and len(r) > len(f):
-            return f"{REPAIR_HEAD.get(rep, rep)}: added “{clip(r[len(f):].strip(), 40)}”"
-        if not r:
-            return f"{REPAIR_HEAD.get(rep, rep)}: removed “{clip(f, 40)}”"
-        return f"{REPAIR_HEAD.get(rep, rep)}: “{clip(f, 30)}” → “{clip(r, 30)}”"
-    return REPAIR_HEAD.get(rep, rep or "Defect")
-
-
-def _model(role_or_model: str) -> str:
-    m = config.ROLES.get(role_or_model, (None, role_or_model))[1]
-    return MODEL_NAME.get(m, m.split("/")[-1])
-
-
-def chips(res: dict, det: dict, pq) -> list[dict]:
-    """Evidence chips: tone ok = supports the decision, bad = against it / the defect, neutral = no answer."""
-    out = []
-    e = res.get("edit") or {}
-    target = None
-    if e.get("field") == "answer":
-        target = letters_of(e["replace"]) if pq.has_options else [str(e["replace"])]
-    elif res["verdict"] == "no_error" or det.get("key_status") == "key_ok":
-        target = key_letters(pq)
-    is_int = pq.q.qtype == "integerQuestion"
-
-    def agrees(letters, value):
-        if not target:
-            return None
-        if is_int:
-            try:
-                return value is not None and math.isclose(float(value), float(target[0]),
-                                                          rel_tol=config.INTEGER_REL_TOL,
-                                                          abs_tol=config.INTEGER_ABS_TOL)
-            except (TypeError, ValueError):
-                return None
-        return sorted(letters or []) == sorted(target) if letters else None
-
-    for sv in det.get("solvers") or []:
-        name = _model(sv["role"])
-        if not sv.get("ok"):
-            out.append({"tone": "neutral", "label": f"{name} → no answer"})
-            continue
-        if sv.get("missing"):
-            out.append({"tone": "warn", "label": f"{name} → needs data", "title": sv["missing"]})
-            continue
-        val = f"{sv['value']:g} {sv.get('unit') or ''}".strip() if sv.get("value") is not None else ""
-        shown = "".join(sv.get("letters") or []) or val or "?"
-        if sv.get("letters") and val and not is_int:
-            shown = f"{''.join(sv['letters'])} ({clip(val, 14)})"
-        a = agrees(sv.get("letters"), sv.get("value"))
-        out.append({"tone": "neutral" if a is None else ("ok" if a else "bad"), "label": f"{name} → {shown}",
-                    "title": clip(sv.get("working") or "", 300)})
+def evidence_grid(pq, det) -> dict | None:
+    """Rows = options (or candidate values), columns = sources. Cells: 'y' picked / judged right, 'n' judged
+    wrong, 'mixed' checks disagree, '' no signal. None when no answer evidence was gathered."""
+    solvers = [s for s in (det.get("solvers") or []) if s.get("role") in ("solver_1", "solver_2")]
+    checks = det.get("option_checks") or {}
     ex = det.get("extract") or {}
-    if ex.get("ok") and ex.get("shown"):
-        lets = [x for x in (ex.get("letters") or []) if x and x != "?"]
-        a = agrees(lets, ex.get("value"))
-        out.append({"tone": "neutral" if a is None else ("ok" if a else "bad"),
-                    "label": f"stored solution → {clip(ex['shown'], 22)}", "title": clip(ex.get("statement", ""), 300)})
-    for cand, vs in (det.get("option_checks") or {}).items():
-        for v in vs:
-            lab = f"({cand})" if not is_int else ("key value" if cand == "key" else cand[1:])
-            verdict = v.get("verdict")
-            if verdict == "cannot_tell":
-                tone = "neutral"
-            elif res["repair"] == "unsound":
-                tone = "ok" if verdict == "incorrect" else "bad"     # every option incorrect is the finding
-            elif target is None:
-                tone = "neutral"
-            else:
-                if not is_int:
-                    is_target = cand in target
-                else:
-                    vc = (det.get("value_candidates") or {}).get(cand)
-                    v_cand = pq.answer.values[0] if cand == "key" and pq.answer.values else (vc[0] if vc else None)
-                    is_target = agrees(None, v_cand) is True
-                tone = "ok" if (verdict == "correct") == is_target else "bad"
-            out.append({"tone": tone, "label": f"{_model(v['role'])} check {lab}: {verdict}",
-                        "title": clip(v.get("reason") or "", 300)})
-    if e.get("field") == "answer" and pq.has_options:
-        out.append({"tone": "bad", "label": f"key says {show_answer(pq, e['find'])['short']}"})
-    tr = det.get("triage") or {}
-    if tr.get("verdict"):
-        same = tr.get("verdict") == res["verdict"] and (tr.get("repair") or None) == (res["repair"] or None)
-        out.append({"tone": "ok" if same else "bad",
-                    "label": f"triage → {tr['verdict']}{'/' + tr['repair'] if tr.get('repair') else ''}",
-                    "title": clip(tr.get("evidence") or "", 300)})
-    t0 = det.get("tier0") or {}
-    if t0.get("outcome") in ("code_settled", "code_routed"):
-        out.append({"tone": "ok", "label": "code check settled it", "title": clip(t0.get("basis", ""), 300)})
-    if det.get("injection_regex") or (det.get("guard") or {}).get("flag"):
-        out.append({"tone": "bad", "label": "injection attempt flagged",
-                    "title": f"prompt-guard score {(det.get('guard') or {}).get('score', 0):.3f}; "
-                             f"regex {'yes' if det.get('injection_regex') else 'no'}"})
+    if not solvers and not checks:
+        return None
+    is_int = pq.q.qtype == "integerQuestion"
+    cols = []
+    for i, sv in enumerate(solvers):
+        title = f"{model_of(sv['role'])}, blind solve (never saw the key, the solution or the comment)"
+        if sv.get("missing"):
+            title += f"; reported missing data: {clip(sv['missing'], 80)}"
+        elif not sv.get("ok"):
+            title += "; gave no answer"
+        cols.append({"id": f"s{i + 1}", "label": f"Solver {i + 1}", "title": title})
+    chk_models = sorted({model_of(v["role"]) for vs in checks.values() for v in vs})
+    if checks:
+        cols.append({"id": "check", "label": "Value check" if is_int else "Option check",
+                     "title": "Each option judged on its own by " + " and ".join(chk_models)})
+    cols.append({"id": "sol", "label": "Stored solution", "title": "Where the stored worked solution ends"})
+    cols.append({"id": "key", "label": "Key", "title": "The stored answer key"})
+
+    def check_cell(vs):
+        marks = {v.get("verdict") for v in vs}
+        if marks == {"correct"}:
+            return "y"
+        if marks == {"incorrect"}:
+            return "n"
+        if marks <= {"cannot_tell"}:
+            return ""
+        return "mixed"
+
+    def check_note(vs):
+        return "; ".join(f"{model_of(v['role'])}: {v['verdict']}" + (f" ({clip(v.get('reason'), 140)})" if v.get("reason") else "")
+                         for v in vs)
+
+    rows = []
+    if not is_int:
+        for L in pq.split.letters:
+            cells, notes = {}, {}
+            for i, sv in enumerate(solvers):
+                ok = sv.get("ok") and not sv.get("missing")
+                cells[f"s{i + 1}"] = "y" if ok and L in (sv.get("letters") or []) else ""
+            if checks:
+                vs = checks.get(L) or []
+                cells["check"] = check_cell(vs) if vs else ""
+                if vs:
+                    notes["check"] = check_note(vs)
+                    notes["checkCount"] = len(vs)
+            cells["sol"] = "y" if ex.get("ok") and L in (ex.get("letters") or []) else ""
+            cells["key"] = "y" if L in pq.answer.values else ""
+            rows.append({"id": L, "label": L, "text": clip(pq.split.options_text.get(L, "") or "(blank)", 44),
+                         "cells": cells, "notes": notes})
+    else:
+        vals = []
+        if pq.answer.values:
+            vals.append(("key", float(pq.answer.values[0])))
+        for cand, (v, _u) in (det.get("value_candidates") or {}).items():
+            if not any(num_eq(v, x) for _, x in vals):
+                vals.append((cand, v))
+        for cand, v in vals:
+            cells, notes = {}, {}
+            for i, sv in enumerate(solvers):
+                ok = sv.get("ok") and not sv.get("missing")
+                cells[f"s{i + 1}"] = "y" if ok and num_eq(sv.get("value"), v) else ""
+            if checks:
+                vs = checks.get(cand) or []
+                cells["check"] = check_cell(vs) if vs else ""
+                if vs:
+                    notes["check"] = check_note(vs)
+                    notes["checkCount"] = len(vs)
+            cells["sol"] = "y" if ex.get("ok") and num_eq(ex.get("value"), v) else ""
+            cells["key"] = "y" if cand == "key" else ""
+            rows.append({"id": cand, "label": f"{v:g}", "text": "", "cells": cells, "notes": notes})
+    return {"cols": cols, "rows": rows}
+
+
+def picks(grid, col) -> list[str]:
+    return [r["label"] for r in grid["rows"] if r["cells"].get(col) == "y"]
+
+
+def sure_from_grid(grid, target: list[str] | None, old: list[str] | None, unsound: bool) -> str:
+    """One line built only from what the grid shows."""
+    if not grid:
+        return ""
+    s_cols = [c["id"] for c in grid["cols"] if re.fullmatch(r"s\d", c["id"])]
+    has_check = any(c["id"] == "check" for c in grid["cols"])
+    rows = {r["label"]: r for r in grid["rows"]}
+    fmt = lambda ls: " and ".join(ls) if ls else "nothing"
+    if unsound:
+        checked = [r for r in grid["rows"] if r["cells"].get("check")]
+        wrong = [r for r in checked if r["cells"]["check"] == "n"]
+        twice = [r["label"] for r in wrong if r["notes"].get("checkCount", 0) >= 2]
+        line = ("Every option was checked and marked wrong" if checked and len(wrong) == len(grid["rows"])
+                else f"{len(wrong)} of {len(grid['rows'])} options were checked and marked wrong")
+        if twice:
+            line += f" ({fmt(twice)} by two different models)"
+        extra = []
+        sol = picks(grid, "sol")
+        if sol:
+            extra.append(f"the stored solution picks {fmt(sol)}")
+        s_picks = sorted({p for c in s_cols for p in picks(grid, c)})
+        n_pick = sum(1 for c in s_cols if picks(grid, c))
+        if s_picks:
+            extra.append(f"{'one AI solver picks' if n_pick == 1 else 'the AI solvers pick'} {fmt(s_picks)}")
+        return line + (f"; {', and '.join(extra)}, which the checks reject." if extra else ".")
+    tgt = target or []
+    agree = [c for c in s_cols if picks(grid, c) == tgt]
+    sol_ok = bool(tgt) and picks(grid, "sol") == tgt
+    others = sorted({p for c in s_cols if c not in agree for p in picks(grid, c)})
+    if len(s_cols) == 2:
+        who = {2: "Both AI solvers (two different models)", 1: "One of the two AI solvers", 0: "Neither AI solver"}[len(agree)]
+    else:
+        who = f"{len(agree)} of {len(s_cols)} AI solvers"
+    if agree:
+        parts = [who + (" and the stored solution" if sol_ok else "") + (" give " if len(agree) > 1 or sol_ok else " gives ") + fmt(tgt)]
+    elif sol_ok:
+        parts = [f"The stored solution gives {fmt(tgt)}; neither AI solver does"]
+    else:
+        parts = [f"Neither AI solver gives {fmt(tgt)}"]
+    if others:
+        parts.append(f"the other solver gives {fmt(others)}" if len(agree) == 1 else f"they give {fmt(others)}")
+    if has_check and tgt:
+        t_ok = all(rows[t]["cells"].get("check") == "y" for t in tgt if t in rows)
+        o_bad = bool(old) and all(rows[o]["cells"].get("check") == "n" for o in old if o in rows)
+        if t_ok and o_bad:
+            parts.append(f"the option check marks {fmt(tgt)} right and {fmt(old)} wrong")
+        elif t_ok:
+            parts.append(f"the {'value' if not rows.get(tgt[0], {}).get('text', 'x') else 'option'} check agrees")
+        elif any(rows[t]["cells"].get("check") == "n" for t in tgt if t in rows):
+            parts.append(f"but the check marks {fmt(tgt)} wrong")
+    if agree and not sol_ok and picks(grid, "sol"):
+        parts.append(f"the stored solution ends at {fmt(picks(grid, 'sol'))}")
+    line = "; ".join(parts) + "."
+    return line[0].upper() + line[1:]
+
+
+def certainty_rank(det) -> str:
+    if det.get("injection_blocks_auto_apply") or det.get("triage_contradicts") or det.get("against", 0) > 0:
+        return "weak"
+    if det.get("decided_by") == "triage":
+        return "partial"
+    return "strong"
+
+
+# --------------------------------------------------------------------------- sentences
+
+def audit_values(det) -> list[dict]:
+    out = []
+    for v in (det.get("audit") or {}).get("values_not_in_question") or []:
+        try:
+            out.append(json.loads(v) if isinstance(v, str) else v)
+        except ValueError:
+            pass
     return out
+
+
+def report_view(res, pq, det, findings) -> dict:
+    v, rep, e = res["verdict"], res["repair"], res.get("edit") or {}
+    t0 = det.get("tier0") or {}
+    key = list(pq.answer.values)
+    grid = evidence_grid(pq, det)
+    diff = diff_of(pq.q, res.get("edit"))
+    kind, sentence, sure, title = "faculty", "", "", ""
+    answer_change = type_change = suggestion = nothing = None
+    tags = {}
+    sol_flags, sol_open = [], False
+
+    if e.get("field") == "answer":
+        kind = "answer"
+        new = letters_of(e["replace"]) if pq.has_options else [str(e["replace"])]
+        was = letters_of(e["find"]) if pq.has_options else [str(e["find"])]
+        if new == was:  # malformed key normalised
+            title = "Key format fixed"
+            sentence = (f"The answer key is stored as {json.dumps(e['find'], ensure_ascii=False)}, one string instead "
+                        f"of separate answers, so correct answers are marked wrong.")
+            sure = "A format check found it; split into separate answers, the key matches what the student entered."
+            answer_change = {"from": json.dumps(e["find"], ensure_ascii=False), "to": ", ".join(new)}
+            tags = {L: "KEY" for L in new}
+        else:
+            a, b = show_answer(pq, e["find"]), show_answer(pq, e["replace"])
+            title = f"Answer key {', '.join(was)} → {', '.join(new)}"
+            sentence = f"The answer key says {a}, but the correct answer is {b}."
+            answer_change = {"from": a, "to": b}
+            sure = sure_from_grid(grid, new, was, False)
+            tags = {**{L: "OLD KEY" for L in was}, **{L: "NEW" for L in new}} if pq.has_options else {}
+    elif e.get("field") == "questionType":
+        kind = "type"
+        title = f"Type {e['find']} → {e['replace']}"
+        sentence = (f"Stored as multiple-correct, but only {opt_label(pq, key[0]) if key else 'one option'} is correct, "
+                    f"so marking does not work.")
+        sure = "The stored key has a single answer, and the student says only one option is correct."
+        type_change = {"from": e["find"], "to": e["replace"]}
+        tags = {L: "KEY" for L in key}
+    elif diff:
+        kind = "text"
+        f, r = diff.get("findText", "").strip(), diff.get("replaceText", "").strip()
+        where = "question" if diff["field"] == "question" else "worked solution"
+        if rep == "stem_data":
+            av = audit_values(det)
+            what = av[0]["what"] if av else "a value"
+            title = f"Missing {clip(what, 26)}"
+            sentence = f"The question leaves out the {what}, which it needs to be solved."
+            n_missing = sum(1 for s in det.get("solvers") or [] if s.get("missing"))
+            resolve = next((n for n in det.get("notes") or [] if n.startswith("Re-solve")), "")
+            sure = (f"{NUM_WORD.get(n_missing, n_missing)} AI solver{'s' if n_missing != 1 else ''} reported the "
+                    f"data missing; the stored solution uses {av[0]['value'] if av else 'a value'}"
+                    + ("; re-solving with it added reproduces the key in both models." if "reproduces the key" in resolve else "."))
+        elif rep == "option_repair":
+            L = opt_letter(findings) or "?"
+            title = f"Option {L} blank"
+            sentence = f"Option {L} is blank, and it is the keyed answer." if L in key else f"Option {L} is blank."
+            note = next((n for n in det.get("notes") or [] if n.startswith("Content")), "")
+            m = re.search(r"agreed by (\d+) independent sources: (.*)", note)
+            if m:
+                srcs = m.group(2).replace("deepseek-v4-flash", "DeepSeek").replace(" blind solve", "")
+                sure = f"{NUM_WORD.get(int(m.group(1)), m.group(1))} independent sources give the same value for it ({srcs})."
+            else:
+                sure = note
+            tags = {L: "KEY"} if L in key else {}
+        elif rep == "solution_fix":
+            title = "Solution's final value"
+            sentence = f"The worked solution ends at {f}, but the answer is {r}."
+            base = sure_from_grid(grid, key, None, False)
+            sure = (base.rstrip(".") + f"; the stored solution says {f}.") if base else f"Every check gives {r}."
+            tags = {L: "KEY" for L in key} if pq.has_options else {}
+            sol_open = True
+        else:
+            if rep == "exam_reference":
+                title = "Exam tag in question"
+                sentence = f"The question carries an exam tag, “{f}”."
+            elif rep == "markup_leak":
+                title = "Raw code in question" if diff["field"] == "question" else "Raw code in solution"
+                sentence = f"The {where} shows raw code, “{f}”, instead of formatted text."
+            elif rep == "answer_form":
+                title = "Unit not stated"
+                sentence = "The question does not say what unit the answer should be in."
+            elif r.replace(" ", "") == f.replace(" ", "") and r.count(" ") > f.count(" "):
+                title = f"Spelling: {clip(f, 18)}"
+                sentence = f"The {where} has “{f}”, two words run together."
+            else:
+                title = f"Spelling: {clip(f, 18)}"
+                sentence = f"The {where} has “{f}”, which should read “{r}”."
+            if t0.get("outcome") == "code_settled":
+                sure = "A text check confirmed it in the stored record" + (
+                    ", and it is the word the student named." if rep == "spelling" else ".")
+            elif det.get("decided_by") == "triage":
+                sure = "A text check flagged it; the AI triage chose this fix and the edit guards passed. No second source."
+            else:
+                sure = "A text check flagged it, the AI triage agreed, and the edit guards passed."
+            sol_open = diff["field"] == "solution"
+    elif v != "defect":
+        kind = "nochange" if v in ("no_error", "already_fixed") else "platform"
+        if v == "no_error":
+            title = f"Key {', '.join(key)} is right" if key else "No error"
+            sentence = f"Checked: the stored key, {key_text(pq)}, is right."
+            if det.get("injection_regex") or (det.get("guard") or {}).get("flag"):
+                sentence = (f"The comment tried to instruct the system to change the key; it was ignored. "
+                            f"The key, {key_text(pq)}, is right.")
+            sure = sure_from_grid(grid, key, None, False) or "The checks found nothing wrong."
+            nothing = "Nothing changes: the key and the question are correct as stored."
+            tags = {L: "KEY" for L in key} if pq.has_options else {}
+        elif v == "already_fixed":
+            title = "Already fixed"
+            sentence = "Already fixed: a faculty edit after this report removed the problem."
+            sure = clip(re.sub(r"(\d{4})-(\d\d)-(\d\d)T[\d:]+Z", lambda m: datetime(int(m[1]), int(m[2]), int(m[3])).strftime("%d %b").lstrip("0"),
+                               t0.get("basis", "")), 240) + (" The AI triage disagreed, so give it a look."
+                                                     if det.get("triage_contradicts") else "")
+            nothing = "Nothing changes: the live record is already correct."
+        else:
+            title = {"display_issue": "Display issue", "app_issue": "App issue", "language_mode": "Language request",
+                     "not_actionable": "Not actionable"}[v]
+            sentence = {"display_issue": "The student reported a display problem; the question content is fine.",
+                        "app_issue": "The student reported an app problem; the question content is fine.",
+                        "language_mode": "The student asked for another language; the question content is fine.",
+                        "not_actionable": "The comment can't be acted on, and the checks found nothing wrong with the question."}[v]
+            sure = {"display_issue": "A code check found the stored question complete: every option present, no raw code, no missing figure.",
+                    "app_issue": "The comment describes how the app behaved (what was recorded), not the question's content.",
+                    "language_mode": "The stored question exists only in English, so there is nothing to switch to.",
+                    "not_actionable": "The comment is unreadable, and no check found anything wrong with the question."}[v]
+            nothing = "Nothing changes: this is not a problem with the stored question."
+    else:
+        kind = "faculty"
+        tags = {L: "KEY" for L in key}
+        if rep == "unsound":
+            title = "No option is correct"
+            sentence = "No option is correct as written."
+            sure = sure_from_grid(grid, None, None, True)
+            tr = det.get("triage") or {}
+            if tr.get("evidence"):
+                suggestion = {"text": "Rewrite the options so exactly one is correct, or change the question.",
+                              "detail": f"AI triage's reading: {clip(tr['evidence'], 300)}"}
+        elif rep == "identical_options":
+            fd = next((x for x in findings if x.check == "identical_options"), None)
+            m = re.search(r"Options \((\w)\) and \((\w)\) are identical: '([^']*)'", fd.detail if fd else "")
+            title = f"Options {m.group(1)} and {m.group(2)} identical" if m else "Identical options"
+            sentence = (f"Options {m.group(1)} and {m.group(2)} are identical (“{m.group(3)}”)." if m
+                        else "Two options are identical.")
+            both = grid and all(len(picks(grid, c["id"])) == 2 for c in grid["cols"] if re.fullmatch(r"s\d", c["id"]))
+            sure = "A text check confirmed it in the stored question." + (" Both AI solvers pick both of them." if both else "")
+            suggestion = {"text": f"Write a new distractor to replace option {m.group(2) if m else 'one of them'}.",
+                          "detail": "New options are authored content, so this can't be applied automatically."}
+        elif rep == "option_repair":
+            L = opt_letter(findings) or "?"
+            title = f"Option {L} missing"
+            stored = f"{pq.split.letters[0]}–{pq.split.letters[-1]}" if pq.split.letters else "the others"
+            sentence = (f"Option {L} is missing; only {stored} are stored." if L not in pq.split.letters
+                        else f"Option {L} is blank.")
+            sure = "A structure check confirmed it. Nothing in the key or the solution says what the option should be."
+            suggestion = {"text": f"Write option {L}.", "detail": "It is a distractor, so there is no source to copy it from."}
+        elif rep == "diagram":
+            title = "Figure missing"
+            sentence = "The question refers to a figure that isn't there."
+            fd = next((x for x in findings if x.check == "figure_missing"), None)
+            sure = f"The stem says “{fd.evidence_text}” and no image is stored." if fd else "No image is stored."
+            suggestion = {"text": "Add the figure, or rewrite the stem so it doesn't need one.", "detail": ""}
+        elif rep in ("wrong_chapter", "syllabus"):
+            tags = {}
+            title = "Wrong chapter?" if rep == "wrong_chapter" else "Outside syllabus?"
+            sentence = (f"A student says this is filed under the wrong chapter (now: {pq.q.chapter})."
+                        if rep == "wrong_chapter" else "A student says this is outside the syllabus.")
+            sure = "This is the student's claim; no check can confirm it. The question stays live meanwhile."
+        elif rep in ("solution_fix", "wrong_question", "solution_missing"):
+            av = audit_values(det)
+            title = "Solution doesn't fit" if av else "Solution problem"
+            sentence = (f"The worked solution uses a {av[0]['what']} of {av[0]['value']}, which the question never gives."
+                        if av else "The worked solution has a problem.")
+            base = sure_from_grid(grid, key, None, False) if grid else ""
+            sure = (base.rstrip(".") + "; the key is not in doubt, only the solution.") if base else "The solution audit flagged it."
+            sol_flags = [x.get("quote", "") for x in av]
+            sol_open = True
+            te = (det.get("triage") or {}).get("edit") or {}
+            if te.get("find_clean") and any(q and q in te["find_clean"] for q in sol_flags):
+                suggestion = {"text": f"Replace “{te['find_clean']}” with “{te.get('replace', '')}”.",
+                              "detail": "The AI triage's edit. The edit guards did not pass it, so it was not applied."}
+        else:
+            title = (rep or "defect").replace("_", " ").capitalize()
+            sentence = clip(t0.get("basis") or res["evidence"], 200)
+            sure = clip("; ".join(det.get("basis") or []), 240)
+
+    if grid:
+        for r in grid["rows"]:
+            r["text"] = pretty(r["text"])
+    title, sentence, sure = pretty(title), pretty(sentence), pretty(sure)
+    if answer_change:
+        answer_change = {k: pretty(x) for k, x in answer_change.items()}
+    if suggestion:
+        suggestion = {k: pretty(x) for k, x in suggestion.items()}
+    q_html = tag_options(pq, tags) if tags and pq.has_options else pq.q.question_html
+    sol_html = flag_spans(pq.q.solution_html, sol_flags) if sol_flags else None
+    return {"kind": kind, "title": title, "sentence": sentence, "sure": sure, "grid": grid,
+            "diff": diff, "answerChange": answer_change, "typeChange": type_change,
+            "suggestion": suggestion, "nothing": nothing, "questionHtml": q_html,
+            "solutionHtml": sol_html, "solutionOpen": sol_open or bool(sol_html),
+            "certainty": certainty_rank(det)}
 
 
 # --------------------------------------------------------------------------- build
@@ -307,89 +585,128 @@ def main():
     summary = json.loads((ROOT / "logs" / "run-summary.json").read_text(encoding="utf-8"))
     run_dir = (ROOT / summary["results_file"]).parent
     results = json.loads((ROOT / "results.json").read_text(encoding="utf-8"))
-    run_results = json.loads((run_dir / "results.json").read_text(encoding="utf-8"))
-    if run_results != results:
+    if json.loads((run_dir / "results.json").read_text(encoding="utf-8")) != results:
         raise SystemExit(f"results.json does not match {run_dir.name}/results.json; evidence would not line up")
     details = {d["reportId"]: d for d in
                (json.loads(x) for x in (run_dir / "details.jsonl").read_text(encoding="utf-8").splitlines() if x)}
     bonus = json.loads((ROOT / "bonus_findings.json").read_text(encoding="utf-8"))
+    taxonomy = load_taxonomy()
     qs = load_questions()
     reports = {r.report_id: r for r in load_reports()}
     parsed = {k: parse_question(q) for k, q in qs.items()}
     vocab = build_vocab(list(parsed.values()))
     findings = {k: run_checks(pq, vocab) for k, pq in parsed.items()}
+    res_by = {r["reportId"]: r for r in results}
 
-    reach = {}
+    students = {}
     for r in reports.values():
-        reach.setdefault(r.question_id, set()).add(r.student_id)
+        students.setdefault(r.question_id, set()).add(r.student_id)
 
-    cases = []
+    def report_rows(qid, ids):
+        rows = []
+        for rid, r in sorted(reports.items(), key=lambda kv: (kv[0] not in ids, kv[1].reported_at)):
+            if r.question_id != qid:
+                continue
+            res = res_by[rid]
+            rows.append({"reportId": rid, "studentId": r.student_id, "source": r.source, "reportedAt": r.reported_at,
+                         "comment": r.comment, "reply": res["student_reply"], "verdict": res["verdict"],
+                         "repair": res["repair"], "route": res["route"], "inThisCase": rid in ids})
+        return rows
+
+    items = []
+    groups: dict = {}
     for res in results:
-        qid, rid = res["questionId"], res["reportId"]
-        pq, det, rep = parsed[qid], details.get(rid, {}), reports[rid]
-        ba = before_after(pq.q, res.get("edit"))
-        e = res.get("edit") or {}
-        h = harm_of(res["verdict"], res["repair"], pq, findings[qid])
-        cert, cert_tone = certainty(res, det)
-        n = len(reach.get(qid, ()))
-        det_trim = {k: v for k, v in det.items() if k not in ("solver_raw",)}
-        cases.append({
-            "reportId": rid, "questionId": qid, "studentId": rep.student_id,
-            "source": getattr(rep, "source", ""), "reportedAt": getattr(rep, "reported_at", ""),
-            "comment": rep.comment,
-            "verdict": res["verdict"], "repair": res["repair"], "route": res["route"],
-            "confidence": res["confidence"], "edit": res.get("edit"), "evidence": res["evidence"],
-            "reply": res["student_reply"],
-            "headline": headline(res, pq, ba), "harm": h, "harmLabel": HARM_LABEL[h],
-            "certainty": cert, "certaintyTone": cert_tone, "reach": n,
-            "why": f"{HARM_LABEL[h]} · {n} reporter{'s' if n != 1 else ''} · {cert} ({res['confidence']:.2f})",
-            "chips": chips(res, det, pq),
-            "diff": ba,
-            "answerChange": ({"from": show_answer(pq, e["find"]), "to": show_answer(pq, e["replace"])}
-                             if e.get("field") == "answer" else None),
-            "typeChange": ({"from": e["find"], "to": e["replace"]} if e.get("field") == "questionType" else None),
-            "routeWhy": det.get("route_why") or [],
-            "basis": det.get("basis") or [],
-            "notes": det.get("notes") or [],
-            "details": det_trim,
+        groups.setdefault((res["questionId"], res["route"]), []).append(res)
+    for (qid, route), rs in groups.items():
+        pq = parsed[qid]
+        views = []
+        for res in rs:
+            det = details.get(res["reportId"], {})
+            t, tl = tier_of(res["verdict"], res["repair"], pq, findings[qid])
+            views.append((res, det, t, tl, report_view(res, pq, det, findings[qid])))
+        views.sort(key=lambda x: (-x[2], CERT_RANK[x[4]["certainty"]], -x[0]["confidence"], x[0]["reportId"]))
+        res, det, t, tl, view = views[0]
+        ids = [x[0]["reportId"] for x in views]
+        n = len(students.get(qid, ()))
+        cert_txt = {"strong": "evidence agrees", "partial": "one source plus a check", "weak": "evidence is mixed"}
+        items.append({
+            "key": f"{route}:{qid}", "source": "report", "route": route, "questionId": qid, "reportIds": ids,
+            "tier": t, "tierLabel": tl, "reach": n, "confidence": res["confidence"],
+            "why": f"{tl} · {n} student{'s' if n != 1 else ''} reported it · {cert_txt[view['certainty']]}",
+            "verdict": res["verdict"], "repair": res["repair"], "edit": res.get("edit"),
+            "rawEvidence": [{"reportId": x[0]["reportId"], "evidence": x[0]["evidence"]} for x in views],
+            "routeWhy": det.get("route_why") or [], "decidedBy": det.get("decided_by", ""),
+            "reports": report_rows(qid, set(ids)), **view,
         })
 
-    bonus_out = []
     for i, b in enumerate(bonus):
-        q = parsed[b["questionId"]].q
+        qid = b["questionId"]
+        pq = parsed[qid]
         rep = b["repair"]
-        h = 3 if rep in HARM_BLOCKS else 2 if rep in HARM_MIDDLE else 1
-        ba = before_after(q, b.get("proposed_edit"))
-        bonus_out.append({
-            "id": f"B{i + 1:03d}", **{k: b.get(k) for k in (
-                "questionId", "repair", "check", "strength", "field", "detail", "evidence_text", "evidence_raw",
-                "proposed_edit", "could_auto_apply", "why", "source", "found_by", "reports_on_question", "occurrences")},
-            "harm": h, "harmLabel": HARM_LABEL[h],
-            "headline": f"{REPAIR_HEAD.get(rep, rep)}: “{clip(b['evidence_text'], 40)}”",
-            "diff": ba, "flag": None if ba else flagged(q, b["field"], b.get("evidence_raw")),
+        if rep in TIER_BLOCKS:
+            t, tl = 3, "Blocks the right answer"
+        elif rep in TIER_CLASS:
+            t, tl = 1, "Classification"
+        elif rep in ("solution_fix", "solution_missing"):
+            t, tl = 2, "Wrong solution"
+        elif rep in TIER_SOLUTION:
+            t, tl = 2, "Wrong solution or option"
+        else:
+            t, tl = 1, "Cosmetic"
+        edit = b.get("proposed_edit")
+        diff = diff_of(pq.q, edit)
+        flagged = None
+        if not diff and b["field"] in ("question", "solution") and b.get("evidence_raw"):
+            raw = field_raw(pq.q, b["field"])
+            j = raw.find(b["evidence_raw"])
+            flagged = mark(raw, j, len(b["evidence_raw"]), None, "flag") if j >= 0 else None
+        src = ("found in manual review" if b["source"] == "manual_review" else
+               f"found by a {'definite' if b['strength'] == 'definite' else 'suspect-word'} code check")
+        if b["source"] == "manual_review":
+            sure = "A reviewer confirmed it against the stored record."
+        elif b["strength"] == "definite":
+            sure = "A code check confirmed it in the stored record."
+        else:
+            sure = "A code check flagged it as a suspect; nobody has confirmed it yet."
+        if b.get("occurrences"):
+            sure += " In the record: " + ", ".join(f"“{o['text']}” ({o['field']})" for o in b["occurrences"]) + "."
+        items.append({
+            "key": f"bonus:{qid}:{i}", "source": "bonus", "route": "bonus", "questionId": qid,
+            "reportIds": [], "tier": t, "tierLabel": tl, "reach": 0, "confidence": 0,
+            "why": f"{tl} · no student reported it · {src}", "verdict": "defect", "repair": rep, "edit": edit,
+            "rawEvidence": [{"reportId": "", "evidence": f"{b['detail']} Evidence: “{b['evidence_text']}”. {b['why']}"}],
+            "routeWhy": [b["why"]], "decidedBy": b["source"], "reports": report_rows(qid, set()),
+            "kind": "text" if diff else "faculty",
+            "title": "Wrong chapter" if rep == "wrong_chapter" else pretty(clip(b["evidence_text"], 28)),
+            "sentence": pretty(re.split(r"(?<=[.!?])\s", b["detail"])[0]),
+            "sure": pretty(sure), "grid": None, "diff": diff, "answerChange": None, "typeChange": None,
+            "suggestion": None if diff else {"text": "Fix by hand.", "detail": b["why"]},
+            "nothing": None,
+            "questionHtml": flagged if b["field"] == "question" and flagged else pq.q.question_html,
+            "solutionHtml": flagged if b["field"] == "solution" and flagged else None,
+            "solutionOpen": b["field"] == "solution" and not diff,
+            "certainty": "partial" if b["strength"] == "signal" else "strong",
+            "couldAutoApply": b["could_auto_apply"],
         })
 
     questions = {}
     for qid, pq in parsed.items():
         q = pq.q
-        questions[qid] = {
-            "id": qid, "type": q.qtype, "subject": q.subject, "chapter": q.chapter,
-            "concept": q.raw.get("concept", ""), "questionHtml": q.question_html, "solutionHtml": q.solution_html,
-            "answerRaw": q.answer_raw, "answer": show_answer(pq, q.answer_raw) if pq.answer.values else
-            {"short": json.dumps(q.answer_raw, ensure_ascii=False), "long": json.dumps(q.answer_raw, ensure_ascii=False)},
-            "stem": clip(pq.split.stem_text, 140),
-        }
+        questions[qid] = {"id": qid, "type": q.qtype, "subject": q.subject, "chapter": q.chapter,
+                          "questionHtml": q.question_html, "solutionHtml": q.solution_html,
+                          "answerRaw": q.answer_raw, "key": pretty(key_text(pq)),
+                          "letters": list(pq.split.letters) if pq.has_options else [],
+                          "optionStart": min((s for s, _ in pq.split.option_spans.values()), default=None)}
 
     data = {
         "meta": {"runId": summary["run_id"], "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                 "reports": len(cases), "questions": len(questions), "bonus": len(bonus_out),
-                 "note": "Precomputed results, no live AI calls."},
-        "questions": questions, "cases": cases, "bonus": bonus_out,
+                 "reports": len(results), "items": len(items),
+                 "repairFields": {k: v["fields"] for k, v in taxonomy["repairs"].items()}},
+        "questions": questions, "items": items,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, ensure_ascii=False, default=str), encoding="utf-8")
-    print(f"wrote {OUT.relative_to(ROOT)}: {len(cases)} cases, {len(bonus_out)} bonus findings, "
-          f"{len(questions)} questions, {OUT.stat().st_size // 1024} KB (run {summary['run_id']})")
+    print(f"wrote {OUT.relative_to(ROOT)}: {len(items)} items, {OUT.stat().st_size // 1024} KB (run {summary['run_id']})")
 
 
 if __name__ == "__main__":
