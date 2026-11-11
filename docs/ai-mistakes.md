@@ -39,3 +39,9 @@ Times the AI (coding assistant or in-product LLM) got something wrong. Add entri
 - **What the AI did wrong:** triage_v3's warning about notation made the model stop proposing stem_data edits at all (R006–R008 went from auto-apply to faculty).
 - **How I caught it:** Caught by re-running all 44 rather than only the changed cases.
 - **What I changed:** triage_v4: states plainly that a missing-value fix is expected when the solution states the value, written the way a student reads it; the notation rule is one short line (code enforces it anyway); if triage declines an edit it must say why (`no_edit_reason`).
+
+## M-006: The injection regex fit R027's wording and missed the held-out phrasings
+- **Date:** 2026-11-11
+- **What the AI did wrong:** the injection regex was written against R027's wording and missed all three new phrasings in the held-out set (H07-H09); H08 auto-applied from an injection report.
+- **How I caught it:** Caught by a held-out set I built, not by the 44.
+- **What I changed:** D-030. A detector built on what the comment does (five families, English and Hinglish), and any guard score >= 0.5 now blocks auto-apply.

@@ -17,15 +17,60 @@ CATEGORY_ORDER = (
     "option_missing", "answer_form", "stem_data", "solution", "vague", "answer",
 )
 
-_INJECTION = [
-    r"\bignore\s+(?:all\s+)?(?:the\s+)?(?:previous|prior|above|earlier|your)\s+(?:instructions?|prompts?|rules)",
-    r"\byou\s+are\s+(?:now\s+)?(?:the|an?|my)\s+[\w\s]{0,20}?(?:bot|assistant|admin|ai|model|system)\b",
-    r"\b(?:system\s+prompt|developer\s+mode|jailbreak|dan\s+mode)\b",
-    r"\bmark\s+(?:this|the)\s+(?:report|question|case)\s+as\b",
-    r"\b(?:disregard|override|bypass)\b.{0,30}\b(?:instructions?|rules|checks?|guards?)\b",
-    r"\bact\s+as\s+(?:an?\s+|the\s+)?(?:admin|system|moderator|developer)\b",
-    r"</?(?:system|assistant|instructions?)>",
-]
+# Injection (D-030): a comment is an instruction to the system, not a description of a problem, when it
+# addresses the system, claims authority, tells it to drop its rules, asks to skip review, or directs a
+# state change. Five families, English and Hinglish, matched on the lowercased comment. A state-change
+# request alone ("please correct the key") is logged, not blocking: students write that in good faith.
+_SYS_NOUN = r"(?:ai|bot|assistant|model|system|admin|administrator|moderator|reviewer|grader|engine)"
+_STATE_OBJ = r"(?:answer\s*key|key|answer|ans|option|report|ticket|status|question|ques|review|database|record)"
+_STATE_WORD = r"(?:resolved|closed|corrected|fixed|approved|verified|done|accepted)"
+_INJECTION_FAMILIES = {
+    "addressee": [
+        rf"\b(?:note\s+to|dear|hey|hi|hello|attention|attn)\b.{{0,25}}\b{_SYS_NOUN}\b",
+        r"\b(?:you|tum|aap|tu)\s+(?:are|r|ab|hi)?\s*(?:now\s+)?(?:an?\s+|the\s+|my\s+)?"
+        r"(?:admin|ai|bot|assistant|model|system|moderator|developer)\b",
+        r"\b(?:admin|ai|bot|assistant|model|system)\s+(?:ho|hai|bano|ban\s+jao)\b",
+        r"\bact\s+as\s+(?:an?\s+|the\s+)?(?:admin|system|moderator|developer)\b",
+        r"</?(?:system|assistant|instructions?)>",
+    ],
+    "authority": [
+        r"\b(?:already\s+)?(?:verified|approved|confirmed|checked|cleared)\s+by\s+(?:the\s+)?"
+        r"(?:faculty|admin|teacher|team|staff|moderator)",
+        r"\b(?:you\s+are|you're|u\s+are)\s+(?:authori[sz]ed|allowed|permitted|cleared)\b",
+        r"\b(?:i\s+am|i'm|main)\s+(?:the\s+|a\s+|an\s+)?(?:faculty|teacher|admin|moderator|hod|staff)\b",
+        r"\b(?:faculty|admin|teacher|sir|team)\s+ne\s+.{0,20}\b(?:verify|check|approve|confirm)\w*",
+        r"\b(?:permission|authori[sz]ation)\s+(?:hai|given|granted|de\s+di)\b",
+    ],
+    "override": [
+        r"\b(?:ignore|forget|disregard|override|bypass)\b.{0,30}\b(?:instructions?|rules|prompts?|checks?|guards?|policy)\b",
+        r"\b(?:instructions?|rules|niyam|prompt)\b.{0,20}\b(?:bhool|bhul|ignore|chhod)\w*",
+        r"\b(?:pichl\w*|purane|upar\s+wal\w*|saare|sab)\b.{0,25}\b(?:bhool|bhul)\s*(?:jao|ja|do)\b",
+        r"\b(?:system\s+prompt|developer\s+mode|jailbreak|dan\s+mode)\b",
+    ],
+    "skip_review": [
+        r"\bwithout\s+(?:any\s+)?(?:faculty\s+|teacher\s+|human\s+|further\s+)?(?:review|check|verification|approval)\b",
+        r"\b(?:no\s+need\s+to|don'?t|do\s+not|skip)\s+(?:the\s+)?(?:review|check|verify|verification)\w*",
+        r"\bbina\s+(?:check|review|verify)\w*",
+        r"\b(?:update|change|fix|set)\b.{0,30}\bdirectly\b",
+    ],
+    "directive": [
+        rf"\b(?:please\s+|pls\s+|plz\s+|kindly\s+)?(?:set|change|update|edit|replace|overwrite|mark|close|resolve|"
+        rf"approve|apply|accept|publish)\s+(?:the\s+|this\s+|it\s+|my\s+)?(?:correct\s+)?{_STATE_OBJ}\b",
+        rf"\b(?:please\s+|pls\s+|plz\s+|kindly\s+)(?:correct|fix)\s+(?:the\s+|this\s+)?{_STATE_OBJ}\b",
+        rf"\b(?:correct|fix)\s+(?:the|this)\s+{_STATE_OBJ}\b",
+        rf"\b(?:mark|close|set)\b.{{0,25}}\bas\s+{_STATE_WORD}\b",
+        rf"\b{_STATE_OBJ}\b.{{0,25}}\b(?:kar\s*do|kardo|karo|kar\s+dijiye|kijiye|badal\s*do|badlo|set\s+karo|"
+        rf"update\s+karo|mark\s+karo|band\s+karo|hata\s*do)\b",
+        rf"\b{_STATE_WORD}\s+(?:mark\s+)?(?:kar\s*do|karo|kardo)\b",
+    ],
+}
+BLOCKING_INJECTION_FAMILIES = ("addressee", "authority", "override", "skip_review")
+
+
+def injection_families(comment: str) -> list[str]:
+    """Which instruction-to-the-system families the comment matches (D-030)."""
+    low = (comment or "").lower()
+    return [k for k, pats in _INJECTION_FAMILIES.items() if _any(pats, low)]
 _LANGUAGE = r"\b(?:hindi|english|marathi|gujarati|tamil|telugu|bengali|bangla|kannada|malayalam|urdu|odia|punjabi|language|bhasha|translate|translation)\b"
 _APP = [
     r"\b(?:clicked|tapped|selected|marked|chose|pressed)\b.{0,30}\b(?:but|and|par|lekin)\b.{0,25}\b(?:saved|recorded|submitted|registered|selected|took|showing|shows|went)\b",
@@ -65,6 +110,7 @@ class Claim:
     primary: str
     categories: list[str]
     injection: bool = False
+    injection_families: list[str] = field(default_factory=list)  # D-030; "directive" alone is logged only
     hinglish: bool = False
     letters: list[str] = field(default_factory=list)       # option letters the student asserts
     values: list[float] = field(default_factory=list)      # numbers the student asserts as the answer
@@ -75,7 +121,7 @@ class Claim:
 
     def as_dict(self) -> dict:
         return {k: getattr(self, k) for k in (
-            "primary", "categories", "injection", "hinglish", "letters", "values", "disputed",
+            "primary", "categories", "injection", "injection_families", "hinglish", "letters", "values", "disputed",
             "expression", "named_words", "option_refs")}
 
 
@@ -179,7 +225,8 @@ def classify(comment: str) -> Claim:
     c = (comment or "").strip()
     low = c.lower()
     cats: list[str] = []
-    injection = _any(_INJECTION, low)
+    families = injection_families(c)
+    injection = any(f in BLOCKING_INJECTION_FAMILIES for f in families)
     if injection:
         cats.append("injection")
     if _is_junk(c):
@@ -215,7 +262,7 @@ def classify(comment: str) -> Claim:
     if _any(_SOLUTION, low):
         cats.append("solution")
 
-    claim = Claim(comment=c, primary="", categories=[], injection=injection)
+    claim = Claim(comment=c, primary="", categories=[], injection=injection, injection_families=families)
     claim.hinglish = bool(set(re.findall(r"[a-z]+", low)) & _HINGLISH)
     _extract_letters(c, claim)
     _extract_values(c, claim)

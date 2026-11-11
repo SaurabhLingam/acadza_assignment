@@ -757,8 +757,8 @@ def _provider_stats(client) -> dict:
 
 
 def _guard_stats(details) -> dict:
-    """Prompt-guard flag rate. A guard flag (score >= GUARD_THRESHOLD) is logged; on its own it blocks
-    auto-apply only at score >= GUARD_BLOCK_ALONE, or at any flag when the regex detector also fires."""
+    """Injection flag rates (D-030). A guard flag (score >= GUARD_THRESHOLD) or a code-detector flag blocks
+    auto-apply; a state-change request with no other family ("directive" alone) is logged only."""
     n = len(details)
     g = lambda d: (d.get("guard") or {})
     flagged = [d for d in details if g(d).get("flag")]
@@ -770,9 +770,11 @@ def _guard_stats(details) -> dict:
             "regex_flagged": regex, "both_flagged": both, "guard_only": len(flagged) - both,
             "regex_only": regex - both, "guard_unparsed_or_error": unparsed,
             "guard_flagged_reports": {d["reportId"]: round(g(d).get("score") or 0, 4) for d in flagged},
-            "guard_flags_logged_only (below block threshold, no regex)": {
-                d["reportId"]: round(g(d).get("score") or 0, 4) for d in flagged
-                if not d.get("injection_regex") and (g(d).get("score") or 0) < config.GUARD_BLOCK_ALONE},
+            "code_families": {d["reportId"]: (d.get("claim") or {}).get("injection_families")
+                              for d in details if (d.get("claim") or {}).get("injection_families")},
+            "state_change_request_logged_only": [
+                d["reportId"] for d in details
+                if (d.get("claim") or {}).get("injection_families") == ["directive"]],
             "blocked_auto_apply": [d["reportId"] for d in details if d.get("injection_blocks_auto_apply")]}
 
 

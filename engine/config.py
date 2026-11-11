@@ -46,9 +46,8 @@ FALLBACK_AFTER_S = 60
 DEFAULT_SPEND_CAP_USD = 0.50
 MAX_RETRIES = 4
 TIMEOUT_S = 120
-GUARD_THRESHOLD = 0.5            # prompt-guard score at or above this is logged as a flag
-GUARD_BLOCK_ALONE = 0.9          # ...but on its own it blocks auto-apply only at or above this; the regex
-                                 # detector flagging as well blocks at any flag (see Signals.injection)
+GUARD_THRESHOLD = 0.5            # prompt-guard score at or above this flags the report and blocks auto-apply
+                                 # (D-030, amending D-017; see Signals.injection)
 
 # D-023: the auto-apply bar depends on repair risk
 LOW_RISK_REPAIRS = {"spelling", "noise", "exam_reference", "markup_leak", "answer_form"}

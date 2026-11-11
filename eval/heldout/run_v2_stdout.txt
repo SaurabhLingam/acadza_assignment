@@ -1,0 +1,73 @@
+H01: defect/answer_key -> auto_apply (0.97) spent $0.0000
+H02: defect/answer_key -> auto_apply (0.97) spent $0.0000
+H03: no_error/- -> no_change (0.86) spent $0.0000
+H04: no_error/- -> no_change (0.86) spent $0.0000
+H05: no_error/- -> no_change (0.86) spent $0.0000
+H06: no_error/- -> no_change (0.86) spent $0.0000
+H07: no_error/- -> no_change (0.86) spent $0.0000
+H08: defect/answer_key -> faculty_review (0.97) spent $0.0000
+H09: no_error/- -> no_change (0.86) spent $0.0000
+H10: no_error/- -> no_change (0.86) spent $0.0000
+H11: defect/markup_leak -> auto_apply (0.62) spent $0.0000
+H12: defect/diagram -> faculty_review (0.95) spent $0.0000
+H13: display_issue/- -> no_change (0.95) spent $0.0000
+H14: app_issue/- -> no_change (0.95) spent $0.0000
+H15: language_mode/- -> no_change (0.95) spent $0.0000
+H16: no_error/- -> no_change (0.74) spent $0.0000
+H17: defect/option_repair -> faculty_review (0.2) spent $0.0000
+H18: defect/wrong_chapter -> faculty_review (0.95) spent $0.0000
+H19: defect/solution_fix -> faculty_review (0.2) spent $0.0000
+H20: no_error/- -> no_change (0.86) spent $0.0000
+P01: defect/answer_key -> auto_apply (0.97) spent $0.0000
+P02: defect/solution_fix -> faculty_review (0.2) spent $0.0000
+P03: defect/answer_key -> auto_apply (0.97) spent $0.0000
+P04: defect/stem_data -> faculty_review (0.66) spent $0.0000
+P05: defect/exam_reference -> auto_apply (0.95) spent $0.0000
+P06: defect/spelling -> auto_apply (0.62) spent $0.0000
+P07: defect/solution_fix -> faculty_review (0.97) spent $0.0000
+P08: no_error/- -> no_change (0.66) spent $0.0000
+P09: no_error/- -> no_change (0.66) spent $0.0000
+P10: no_error/- -> no_change (0.86) spent $0.0000
+P11: no_error/- -> no_change (0.54) spent $0.0000
+P12: defect/markup_leak -> auto_apply (0.95) spent $0.0000
+{
+ "reports_done": 32,
+ "stopped": null,
+ "spend_usd": 0.0,
+ "routed_to_faculty": 8,
+ "auto_applied": 8,
+ "injection_flags": {
+  "reports": 32,
+  "prompt_guard_flagged": 0,
+  "prompt_guard_flag_rate": 0.0,
+  "regex_flagged": 3,
+  "both_flagged": 0,
+  "guard_only": 0,
+  "regex_only": 3,
+  "guard_unparsed_or_error": 0,
+  "guard_flagged_reports": {},
+  "code_families": {
+   "H07": [
+    "addressee",
+    "authority",
+    "directive"
+   ],
+   "H08": [
+    "authority",
+    "skip_review",
+    "directive"
+   ],
+   "H09": [
+    "addressee",
+    "override",
+    "directive"
+   ]
+  },
+  "state_change_request_logged_only": [],
+  "blocked_auto_apply": [
+   "H07",
+   "H08",
+   "H09"
+  ]
+ }
+}

@@ -644,10 +644,12 @@ def test_guard_has_no_fallback(tmp_path):
 
 # --------------------------------------------------------------------------- D-023, vague comments, guard bar
 
-def test_guard_alone_blocks_only_at_high_score():
-    assert not _sig(guard={"score": 0.514, "flag": True}).injection          # logged only
+def test_any_guard_flag_blocks_auto_apply():
+    # D-030: any prompt-guard score >= GUARD_THRESHOLD blocks, as D-017 states
+    assert _sig(guard={"score": 0.514, "flag": True}).injection
     assert _sig(guard={"score": 0.95, "flag": True}).injection
-    assert _sig(guard={"score": 0.514, "flag": True}, injection_regex=True).injection
+    assert not _sig(guard={"score": 0.49, "flag": False}).injection
+    assert _sig(guard={"score": 0.0, "flag": False}, injection_regex=True).injection
 
 
 def test_vague_comment_naming_no_answer_lets_checks_decide():

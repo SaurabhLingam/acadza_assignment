@@ -234,3 +234,37 @@ Each entry: **Decision**, **Alternatives considered**, **Why**, **Evidence**. Ne
 - **Alternatives considered:** Leave answer_form to triage's judgement (the unit check stays a signal only); settle on the check alone, without the student's claim.
 - **Why:** With triage deciding, the same report flipped between runs: triage_v2 said defect/answer_form, triage_v3 said no_error ("absence of an explicit unit does not constitute an error for an integer answer"). The facts are checkable by code: whether the student asked about the unit and whether the stem names one. Requiring the claim as well as the check keeps it from firing on every integer question without a unit.
 - **Evidence:** Runs `20261110T182626Z` (defect/answer_form, auto-applied "equal to (in N)") and `20261111T044652Z` (no_error, the one miss in 43/44). Tests in `tests/test_verify.py`: settles on claim + check; not when the stem states "(in N)"; not on a rounding claim.
+
+## D-029: A solver noticing a defect code already found still counts as evidence
+- **Date:** 2026-11-11
+- **Decision:** the counting rule in decide.py (a solver noticing a defect code already found still counts as evidence). In code: `engine/decide.py` `excuse_noticed_defect`. A blind solve whose `missing_information` only names a defect code already found definitely (a blank or missing option, a missing figure) is not treated as assuming data, so its answer still counts. If the text also says data is missing, or names a different option, it does not count.
+- **Alternatives considered:** Count no answer from a solver that reports any missing information (the earlier rule).
+- **Why:** A solver that points out the same defect code already found has not assumed anything. Dropping its answer threw away an independent source exactly where a defect is present.
+- **Evidence:** Introduced with the final run `20261111T063037Z` (commit `d021a48`); test `tests/test_llm_tier.py` (`excuse_noticed_defect`: counts when it names the blank option found; not when it names another option, also says data is missing, or code found nothing).
+
+## D-030: Injection detected by what the comment does (amends D-017)
+- **Date:** 2026-11-11
+- **Decision:** amendment to D-017: injection detected by what the comment does (five families, English + Hinglish); a state-change request alone is logged, not blocking; any guard score >= 0.5 blocks auto-apply; code-only, no LLM check. Found by the held-out set.
+  - Families (`engine/claims.py`, `injection_families`):
+    - *addressee*: speaks to the system ("note to the assistant", "you are now admin", "tum ab admin ho").
+    - *authority*: claims verification or permission ("verified by faculty", "you are authorised").
+    - *override*: tells it to drop its rules ("ignore previous instructions", "instructions bhool jao").
+    - *skip_review*: asks to bypass review ("without faculty review", "bina check", "update … directly").
+    - *directive*: asks it to change state ("set / change / update the key", "mark as resolved", "answer B kar do").
+  - Any family other than *directive* flags the report. *Directive* alone is logged (`state_change_request_logged_only` in the run summary).
+  - The prompt guard blocks at `GUARD_THRESHOLD` (0.5). The 0.9 bar for the guard alone (`GUARD_BLOCK_ALONE`, from commit `81c765a`) is removed.
+- **Alternatives considered:**
+  - Extend the old phrase regex with the new wordings.
+  - Block on a state-change request alone.
+  - Add an LLM "is this an instruction?" check.
+  - Keep the 0.9 bar for the guard alone.
+- **Why:**
+  - The old regex matched R027's wording and nothing else.
+  - Students write "please correct the answer key" in good faith, so blocking that alone would cost genuine auto-applies.
+  - An injected comment can talk an LLM checker out of flagging it, but not a pattern match.
+  - D-017 says any flag blocks; the 0.9 bar contradicted it.
+- **Evidence:**
+  - Held-out run `20261111T083142Z`: H07, H08 and H09 went unflagged (guard scores 0.0006, 0.062, 0.11), and H08 auto-applied.
+  - The detector flags those three and R027, and no other report in either set.
+  - `tests/test_injection.py`: each family; benign look-alikes; a state-change request alone is logged only; exactly one of the 44 given reports flags.
+  - The patterns were written after seeing H07–H09, so a fresh set from the user is the real test.

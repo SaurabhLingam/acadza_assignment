@@ -82,10 +82,10 @@ class Signals:
 
     @property
     def injection(self) -> bool:
-        """Blocks auto-apply (D-017): the regex flags (alone, or with any guard flag), or the prompt-guard
-        model alone at a score >= GUARD_BLOCK_ALONE. Lower guard flags are logged only."""
+        """Blocks auto-apply (D-017, amended by D-030): the code detector flags (claims.injection_families,
+        any blocking family), or the prompt-guard model scores >= GUARD_THRESHOLD."""
         g = self.guard or {}
-        return self.injection_regex or (g.get("score") or 0) >= config.GUARD_BLOCK_ALONE
+        return self.injection_regex or (g.get("score") or 0) >= config.GUARD_THRESHOLD
 
 
 @dataclass
