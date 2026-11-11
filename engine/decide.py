@@ -16,7 +16,8 @@ contradicts what code decided, the case goes to faculty.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass, field, replace
 
 from . import config
 from .checks import DEFINITE, SIGNAL
@@ -44,6 +45,7 @@ class SolverSig:
     error: str = ""
     working: str = ""                   # the solver's own key steps (used as the reply's key step)
     from_letter: bool = False           # no expression given; the picked letter is this solver's answer
+    noticed: str = ""                   # "missing" text that only names a defect code already found
 
 
 @dataclass
@@ -111,6 +113,30 @@ class Decision:
 def counts(sv: SolverSig) -> bool:
     """A solver answer counts as independent evidence only if it needed no assumption."""
     return sv.ok and not sv.missing
+
+
+_ASSUMED_DATA = re.compile(r"not\s+(?:given|provided|specified|stated|mentioned)|unknown|assum|value of", re.I)
+
+
+def excuse_noticed_defect(sv: SolverSig, findings) -> SolverSig:
+    """A solver that notices the defect code already found (a blank or missing option, a missing figure) has not
+    assumed any data, so its answer still counts. Its `missing` text must name that option or the figure and say
+    nothing about missing data."""
+    if not sv.missing or _ASSUMED_DATA.search(sv.missing):
+        return sv
+    letters, figure = set(), False
+    for f in findings:
+        if f.strength == DEFINITE and f.check == "option_blank":
+            letters.add(f.data.get("letter"))
+        elif f.strength == DEFINITE and f.check == "option_missing":
+            letters.update(f.data.get("missing") or [])
+        elif f.strength == DEFINITE and f.check == "figure_missing":
+            figure = True
+    named = {m.upper() for m in re.findall(r"\boption\s*\(?([A-Ea-e])\)?(?![\w])", sv.missing, re.I)}
+    if (named and named <= letters) or (figure and re.search(r"\b(?:figure|diagram|image)\b", sv.missing, re.I)
+                                        and not re.search(r"\boption\b", sv.missing, re.I)):
+        return replace(sv, missing=None, noticed=sv.missing)
+    return sv
 
 
 def _assumed(s: Signals) -> list[str]:

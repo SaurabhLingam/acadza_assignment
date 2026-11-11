@@ -94,9 +94,10 @@ class Runner:
                             lambda e: {"score": None, "label": "error", "flag": False, "raw": e[:80]})
         raw_solver = {}
         for role in ("solver_1", "solver_2"):
-            from .decide import SolverSig
+            from .decide import SolverSig, excuse_noticed_defect
             sig, raw = self.once((role, qid), lambda role=role: run_solver(self.c, role, pq),
                                  lambda e, role=role: (SolverSig(role, "", False, error=e[:120]), {}))
+            sig = excuse_noticed_defect(sig, findings)   # noticing the defect code found is not missing data
             s.solvers.append(sig)
             raw_solver[role] = raw
             if pq.q.qtype == "integerQuestion":

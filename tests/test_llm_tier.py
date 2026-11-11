@@ -695,3 +695,15 @@ def test_reply_uses_option_text_after_a_live_edit():
     e = {"field": "question", "find": "Epithellial tisue", "replace": "Epithelial tissue"}
     assert _post_edit("Epithellial tisue", e) == "Epithelial tissue"
     assert _post_edit("Epithellial tisue", None) == "Epithellial tisue"
+
+
+def test_solver_noticing_the_blank_option_still_counts():
+    from engine.checks import DEFINITE, Finding
+    from engine.decide import SolverSig, counts, excuse_noticed_defect
+    blank = [Finding("option_blank", "option_repair", DEFINITE, "question", "Option C is blank.", data={"letter": "C"})]
+    sv = lambda m: SolverSig("solver_1", "openai", True, value=1.0, missing=m)
+    noticed = excuse_noticed_defect(sv("Option C is missing; it should contain the ratio 1:1."), blank)
+    assert counts(noticed) and noticed.noticed
+    assert not counts(excuse_noticed_defect(sv("Option D is missing"), blank))              # not the defect code found
+    assert not counts(excuse_noticed_defect(sv("Option C blank; the mass is not given"), blank))  # also assumed data
+    assert not counts(excuse_noticed_defect(sv("Option C is blank"), []))                  # code found nothing

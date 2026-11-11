@@ -19,16 +19,16 @@ PROVIDERS = {
 # role -> (provider, model, prompt name, prompt version, max_tokens)
 ROLES = {
     "guard":        ("groq", "meta-llama/llama-prompt-guard-2-86m", "prompt_guard", 1, 16),
-    "solver_1":     ("groq", "openai/gpt-oss-120b", "solver", 3, 6000),
-    "solver_2":     ("openrouter", "deepseek/deepseek-v4-flash", "solver", 3, 6000),
-    "extract":      ("groq", "openai/gpt-oss-20b", "extract", 1, 2000),
+    "solver_1":     ("groq", "openai/gpt-oss-120b", "solver", 5, 6000),
+    "solver_2":     ("openrouter", "deepseek/deepseek-v4-flash", "solver", 5, 6000),
+    "extract":      ("groq", "openai/gpt-oss-20b", "extract", 2, 2000),
     "audit":        ("groq", "openai/gpt-oss-120b", "solution_audit", 3, 4000),
     "option_check": ("groq", "openai/gpt-oss-120b", "option_check", 2, 4000),
     "tiebreak":     ("openrouter", "deepseek/deepseek-v4-flash", "option_check", 2, 6000),
     "value_check":  ("groq", "openai/gpt-oss-120b", "value_check", 1, 4000),       # integerQuestion
     "value_tiebreak": ("openrouter", "deepseek/deepseek-v4-flash", "value_check", 1, 6000),
-    "triage":       ("groq", "openai/gpt-oss-120b", "triage", 4, 4000),
-    "reply":        ("groq", "openai/gpt-oss-20b", "reply", 4, 600),
+    "triage":       ("groq", "openai/gpt-oss-120b", "triage", 6, 4000),
+    "reply":        ("groq", "openai/gpt-oss-20b", "reply", 5, 600),
 }
 
 # Families, so code can check that "independent" signals really are independent.

@@ -857,3 +857,84 @@ session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
 <summary>Background command "Run all 44 reports, reusing cached solves" completed (exit code 0)</summary>
 </task-notification>
 ```
+
+---
+
+### 2026-11-11T11:09:30+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+Do triage_v5: replace the solution-fix example ("a = 40 cm" → "a = 20 cm") with a neutral one not taken from data/. Then scan every file in prompts/ for anything taken from data/ (values, option text, phrasings from questions or comments) and replace those too. Add a test that fails if any prompt contains a number or phrase from data/questions.json or data/reports.json.
+
+Rerun all 44 (cached solves), confirm 44/44 and 0 wrong auto-applies, rebuild data.json and bonus_findings.json, commit and push. If anything changes, stop and tell me.
+```
+
+---
+
+### 2026-11-11T11:34:28+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+<task-notification>
+<task-id>b0rgd9qc3</task-id>
+<tool-use-id>toolu_01UfBdAqRotpLPDyTbyYJS3N</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\77f3d0e8-4bb1-44c9-8f08-2d117cd48778\tasks\b0rgd9qc3.output</output-file>
+<status>completed</status>
+<summary>Background command "Add CHANGELOG entry and run all 44" completed (exit code 0)</summary>
+</task-notification>
+```
+
+---
+
+### 2026-11-11T11:59:02+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+
+
+<pasted_content id="8dee">
+Go with (a), as the final engine change. After this run the engine is frozen.
+
+- solver_v5: missing_information means only values the question needs and doesn't give. Standard constants (g, water density, etc.) and the absence of an option don't count.
+- Also in decide.py: if a solver's missing_information only refers to a defect code already found (e.g. the blank option), the solve still counts as evidence. A solver noticing the defect we're fixing must not disqualify it.
+- triage_v6: find_clean must be a short plain-text phrase naming the quantity, never a span containing formulas, exponents or numbers with notation.
+
+Rerun all 44. If it's 44/44 with 0 wrong auto-applies, commit everything (the leak-free prompts, the leak test, this run as the root results.json), rebuild data.json and bonus_findings.json, and push, whatever the route counts are. Report final numbers and any route changes. If accuracy drops or there's a wrong auto-apply, stop and tell me.
+</pasted_content id="8dee">
+
+```
+
+---
+
+### 2026-11-11T12:11:16+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+<task-notification>
+<task-id>bphzgve3v</task-id>
+<tool-use-id>toolu_01PKcLXHm3wTG9nMhHiLj9kV</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\77f3d0e8-4bb1-44c9-8f08-2d117cd48778\tasks\bphzgve3v.output</output-file>
+<status>completed</status>
+<summary>Background command "Add CHANGELOG entry and run all 44" completed (exit code 0)</summary>
+</task-notification>
+```
+
+---
+
+### 2026-11-11T12:12:25+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+<task-notification>
+<task-id>bbu0yngiq</task-id>
+<tool-use-id>toolu_01TbZn2NYDERvHZ8QyXrwMuP</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\77f3d0e8-4bb1-44c9-8f08-2d117cd48778\tasks\bbu0yngiq.output</output-file>
+<status>failed</status>
+<summary>Background command "Serve the built console for the UI check" failed with exit code 1</summary>
+</task-notification>
+```
