@@ -37,31 +37,56 @@ Details: [`eval/heldout/README.md`](eval/heldout/README.md).
 
 ## How it works
 
-```
- student report ──► code checks ──► blind solves ──► per-option / value checks
- (comment = data,   parser, rule      2 model families    (and a tie-breaker on
-  never orders)     checks, claim     see only the        the other family)
-                    sorter, injection question: no key,
-                    detector          no comment
-                          │                 │                    │
-                          └─────────► signals ◄─────────────────┘
-                                         │
-                       ┌─────────────────▼─────────────────┐
-                       │ CODE DECIDES verdict / repair /   │◄── triage LLM: only what code
-                       │ route / confidence (D-001, D-016) │    can't settle; a contradiction
-                       └─────────────────┬─────────────────┘    → faculty
-                                         │
-                ┌────────────────────────▼────────────────────────┐
-                │ GUARDS: edit touches only allowed fields, find  │
-                │ is unique, risk-tiered auto bar (D-023), two    │
-                │ sources for content (D-020/021), injection flag │
-                │ blocks auto-apply (D-017/030/032)               │
-                └────────────────────────┬────────────────────────┘
-                                         │
-               reply LLM (facts from code) ──► REPLY CHECK: no false action, no answer
-                                                but the decision's; else code-built reply
-                                         │
-                       results.json ──► faculty console (static, precomputed)
+```mermaid
+flowchart TD
+    R(["Student report<br/>(the comment is data, never orders)"])
+
+    subgraph SIG["Signals: every tier runs on every report"]
+        direction LR
+        C["Code checks<br/>parser · rule checks · claim sorter ·<br/>injection detector + prompt guard"]
+        S["Blind solves<br/>2 model families · see only the question:<br/>no key, no comment"]
+        O["Per-option / value checks<br/>+ tie-breaker on the other family"]
+        S --> O
+    end
+
+    R --> C
+    R --> S
+
+    C --> D
+    O --> D
+
+    D{"Do the signals settle it?"}
+    D -- yes --> CODE["CODE DECIDES<br/>verdict · repair · route · confidence<br/>(D-001, D-016)"]
+    D -- no --> T["Triage LLM<br/>only what code can't settle"]
+    T --> TC{"Contradicts the signals?"}
+    TC -- yes --> FR
+    TC -- no --> CODE
+
+    CODE --> G{"Guards pass?<br/>allowed fields only · find is unique ·<br/>risk-tiered bar (D-023) · two sources<br/>for content (D-020/021, D-024)"}
+    G -- no --> FR
+    G -- yes --> INJ{"Injection-flagged?<br/>(D-017, D-030, D-032)"}
+    INJ -- yes --> FR
+    INJ -- no --> AUTO
+
+    CODE -.->|"no defect"| NC
+    CODE -.->|"faculty-only repair or not sure"| FR
+
+    AUTO(["auto_apply"])
+    FR(["faculty_review"])
+    NC(["no_change"])
+
+    AUTO --> RL
+    FR --> FL{"Injection-flagged?"}
+    FL -- yes --> NEU["Neutral reply, names no answer<br/>(D-031)"] --> OUT
+    FL -- no --> RL
+    NC --> RL
+
+    RL["Reply LLM<br/>facts from code"]
+    RL --> RC{"Reply check<br/>no false action claim ·<br/>no answer but the decision's"}
+    RC -- pass --> OUT
+    RC -- fail --> FB["Code-built reply"] --> OUT
+
+    OUT[("results.json")] --> CON["Faculty console<br/>static, precomputed"]
 ```
 
 - Every LLM call is logged with its model, prompt version, tokens, latency and cache status

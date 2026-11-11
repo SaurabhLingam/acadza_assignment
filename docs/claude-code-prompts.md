@@ -1277,3 +1277,23 @@ session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
 ```text
 Replace LIVE_URL in README.md with https://acadza-assignment.vercel.app/ and change "code checks and my review" to "code checks and review" in PRODUCT.md. Commit and push.
 ```
+
+---
+
+### 2026-11-11T18:46:58+05:30
+
+session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
+
+```text
+improve the readme flowchart, make it an actual flowchart
+```
+
+---
+
+### 2026-11-11T18:49:07+05:30
+
+session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
+
+```text
+I cant see it on github
+```
