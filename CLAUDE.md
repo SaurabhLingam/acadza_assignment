@@ -1,6 +1,6 @@
 # CLAUDE.md: project rules (follow in every session)
 
-Acadza AI intern assignment: a "Report → Fix" triage engine (Python) plus a faculty review console (static site). See `README.md` for the brief.
+Acadza AI intern assignment: a "Report → Fix" triage engine (Python) plus a faculty review console (static site). See `docs/assignment-brief.md` for the brief (moved from the root README).
 
 Stack: Python engine. LLMs are Groq (main) and OpenRouter (tie-breaker), both free tier, called through their OpenAI-compatible APIs. Keys come from `.env` (`GROQ_API_KEY`, `OPENROUTER_API_KEY`); see `.env.example`. The user works on Windows (PowerShell).
 

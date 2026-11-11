@@ -1104,3 +1104,43 @@ mistake: the first version of the reply answer check ignored the value inside th
 </pasted_content id="0f56">
 
 ```
+
+---
+
+### 2026-11-11T17:08:56+05:30
+
+session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
+
+```text
+
+
+<pasted_content id="0f56">
+Draft three docs from our records. Everything must trace to files in the repo; don't invent facts. I'll edit after.
+
+1. PROMPTS.md (repo root):
+- How I worked (5–6 lines): planned the approach in a separate Claude chat, then directed Claude Code in reviewed phases (propose, I review, then build); records kept automatically. I built held-out test sets outside Claude Code's view to test generalisation, and pre-committed to fixing only safety failures.
+- Prompts inside the product: for each prompt the engine loads, the CURRENT version verbatim, then a short version history from CHANGELOG.md (what changed, why, what evidence). For triage and solver, describe the leak-fix versions in one line as "replaced worked examples with neutral ones".
+- Prompts I gave Claude Code: the 10–12 most important verbatim from docs/claude-code-prompts.md, each with one line on why it mattered: initial setup, survey-first profiler, the verdict-split correction, shadow mode, label verification, the /design brief, the Groq fallback decision, the held-out run ("run the frozen engine, don't read the labels"), the "fix only the safety failure, not P02/P08" decision, and the "fix by technique, not by example, one round then freeze" prompt. Don't include the triage_v5 / leak prompts. Link the full log.
+- Where the AI was wrong: 3 in detail from docs/ai-mistakes.md: M-006 (injection regex fitted to R027's wording, missed all three new phrasings, H08 auto-applied; caught by my held-out set), verdict drift against D-001, and the R034 reply inventing an answer. The rest as one-liners, including the v3 over-caution caught by a full rerun, the wrong claim that a flagged reply never confirms an answer (led to D-031), and M-007.
+- Design decisions: a table of all decisions D-001 to D-032 (id, one-line decision, one-line why), linking docs/decisions.md, plus a short "tried and dropped" list.
+- Evidence: 44/44 and how the labels were made, clearly noted as in-sample; the held-out set (32 reports, 10 injected-defect questions, key kept outside the repo until scored): 26/32, 0 wrong auto-applies, 1 policy failure (H08) fixed; injection tests: set 2 before the fix 9/20 caught with 0/12 false alarms, one improvement round by technique, then set 3 (unseen) 12/15 caught with 2/10 false alarms (false alarms only cost a faculty review); the reply check, which on replay caught the engine about to tell a student a wrong answer (P02, "the correct answer is 4" when both solvers got 16) and a false syllabus claim (R026); the weak-model run (0 wrong auto-applies); shadow mode; the R016 case where a solver erred and the harness routed to faculty; cost and time.
+
+2. PRODUCT.md (repo root, max 1 page), using these points:
+- Who loses most: the student who meets a broken question the night before an exam and learns the wrong concept from a wrong key; also the student who reported correctly and gets brushed off, because they stop reporting. Design response: blocking defects first in the queue, fast auto-fix when evidence is strong, every reporter credited even when their own answer is wrong.
+- Never auto-apply: answer-key changes without two independent model families agreeing; anything from an injection-flagged report; new authored content (distractors, figures, whole solutions); classification/syllabus calls; anything that changes scoring of past attempts without re-grading. Explain the risk tiers (D-023). Also: a reply never states an answer the engine hasn't confirmed.
+- Week-1 metric: undo rate on auto-applied edits (the share faculty reverse). Target near zero; if it rises, tighten the bar. Secondary: time from first report to fix for blocking defects.
+- Idea to pitch: catch broken keys before anyone reports them, from attempt data. If strong students overwhelmingly pick a "wrong" option, the key is probably wrong. Run the same verification pipeline on those, and on the whole 8-lakh corpus (our bonus scanner found 21 issues nobody reported in 43 questions).
+
+3. README.md (repo root):
+- What it is, live console URL (LIVE_URL), video link (placeholder VIDEO_URL).
+- Results: 44/44 in-sample, routes, 0 wrong auto-applies, cost per run, weak-model result; then held-out: 26/32 with 0 wrong auto-applies and H08 fixed; injection 9/20 before the fix, 12/15 on an unseen set after, 2/10 false alarms; link eval/heldout/README.md.
+- How it works: pipeline diagram (code checks, blind solves, checks, code decides, guards, replies + reply check).
+- Run it: engine commands (including the --questions/--reports-file/--out flags), eval, console dev/build.
+- How this scales: cost grows with broken questions not reports (dedupe per question version), instant ack + async queue with harm-first priority, spike circuit-breaker, offline corpus precompute, provider pools with fallback and spend caps, hash-checked versioned edits with undo and re-grading, report rate limits and reporter reputation, and what the console needs in production (backend, auth, case locking, server-side audit). Simple architecture diagram. Say clearly what's built vs designed.
+- Honest notes: 44/44 is in-sample (prompts and rules were iterated on these 44; the held-out set is the better estimate); precomputed results (no live AI in the console); audit log in localStorage; free-tier and cheap models on purpose; known misses P02/P08 diagnosed but not fixed; remaining injection gaps (Devanagari, unlabelled personas, authority phrasings outside the lists) listed in eval/heldout/README.md.
+- Bonus findings: summary plus a link to bonus_findings.json.
+
+Commit and push. Tell me the word counts and anything you weren't sure about.
+</pasted_content id="0f56">
+
+```

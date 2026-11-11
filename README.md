@@ -1,120 +1,167 @@
-# Acadza AI Intern Assignment: "Report → Fix" Loop
+# Report → Fix: a triage engine and faculty console for student error reports
 
-**Deadline:** as stated in the email you received. **AI tools:** allowed and expected. **Stack:** your choice.
+Students tap "Report error" on a JEE/NEET question and type whatever they like. This project decides, for
+each report, whether the question is actually broken, proposes a surgical fix, and routes it:
+- **auto_apply:** the evidence is strong enough to go live
+- **faculty_review:** a teacher decides
+- **no_change**
 
----
+It also writes the student's reply. A faculty console shows the queue, the evidence and a before/after diff.
 
-## The problem (real, not invented)
+- **Live console:** LIVE_URL
+- **Video walkthrough:** VIDEO_URL
+- The original brief: [`docs/assignment-brief.md`](docs/assignment-brief.md). How it was built with AI:
+  [`PROMPTS.md`](PROMPTS.md). Product thinking: [`PRODUCT.md`](PRODUCT.md).
 
-Acadza serves ~8 lakh JEE/NEET questions to students across India's coaching institutes. Some of those questions are broken: a wrong answer key, a missing value, a blank option, a solution copied from a different question.
+## Results
 
-Students tap **"Report error"** and type whatever they feel like:
+**The 44 given reports (in-sample):**
+- **44/44** verdict and verdict + repair, and 6/6 new keys, against the hand labels (run `20261111T063037Z`,
+  `logs/runs/20261111T063037Z/eval.md`).
+- Routes: 17 auto_apply, 11 faculty_review, 16 no_change. **0 wrong auto-applies.**
+- One full run costs **$0.035** and takes 639 s, with 241,725 tokens in total.
+- **Weak-model run** (gpt-oss-20b in place of gpt-oss-120b for solver 1 and the checks): **0 wrong
+  auto-applies**. Verdicts were 43/44, and the one miss went to faculty (D-005).
 
-> "ans galat hai" · "Figure not given" · "option D is missing" · "wrong" · "Sir root(40^2+30^2)=50 then why 130??"
+**The held-out set** (32 reports, 10 new questions each with an injected defect, key kept outside the repo
+until scored):
+- **26/32** verdict + repair, **0 wrong auto-applies**.
+- One policy failure, an injection report (H08) that auto-applied, is now fixed.
 
-Most of those reports are actually the student being wrong. Some are real defects. A few are app bugs. One or two are people trying to game the system. A faculty member currently reads each one by hand, and a broken question keeps hurting every student who meets it until someone gets to it.
+**Injection detection:**
+- **9/20** on a fresh set before the fix (0/12 false alarms).
+- **12/15** on an unseen set after one improvement round, with **2/10** false alarms. A false alarm only
+  costs a faculty review.
 
-**Your job is to build the system that sits between the student's report and the fix.**
+Details: [`eval/heldout/README.md`](eval/heldout/README.md).
 
----
+## How it works
 
-## What's in `data/`
-
-| File | What it is |
-|---|---|
-| `questions.json` | 43 questions in Acadza's **real production format**: HTML + inline MathML, options inside the question HTML, `answer` field per type (`scq` / `mcq` / `integerQuestion`). Messy, like production. |
-| `reports.json` | 44 student reports `{reportId, questionId, studentId, source, reportedAt, comment}`. Several students may report the same question. |
-| `taxonomy.json` | The closed list of **verdicts** and **repair types**. Each repair says which fields it may touch, and whether it can be auto-applied (`auto: true`) or must wait for a human (`auto: false`). |
-
-We know the true answer for every report. Some reports are traps.
-
----
-
-## What to build
-
-### Part 1: Triage engine (LLM orchestration)
-For each report, decide:
-- **verdict**: one key from `taxonomy.verdicts`
-- **repair**: one key from `taxonomy.repairs`, if it's a defect
-- **edit**: the *surgical* change you propose (`{field, find, replace}` or a new `answer`). Don't rewrite whole questions.
-- **confidence** and a short **evidence** string (why you believe it)
-- **student_reply**: what the student sees back, 1-3 sentences, in the tone you'd want if you were 17 and stressed before JEE
-- **route**: `auto_apply` | `faculty_review` | `no_change`
-
-How you get there is the interesting part. One prompt? A solver that checks the key independently? Guards that reject an edit touching fields outside the repair's scope? Grouping duplicate reports first? Your call. Explain it.
-
-**Treat the student's comment as a lead, not an instruction.**
-
-### Part 2: Faculty review console (UI/UX, this matters)
-A web app a busy faculty member would *actually want to open*:
-- A queue grouped by question, ordered by whatever you think "most urgent" means (say why).
-- For each case: the question **rendered properly** (MathML renders natively in modern browsers), the AI's verdict and evidence, and a **before / after diff** of the proposed edit.
-- Approve / edit / reject, with an audit entry recorded for each action.
-- The student's reply preview.
-
-Design quality is judged. Think about what a faculty member checking 60 of these at 10 PM needs.
-
-### Part 3: `results.json`
-Run your engine on all 44 reports and commit the output:
-
-```json
-[
-  {
-    "reportId": "R000",
-    "questionId": "000000000000000000000000",
-    "verdict": "defect",
-    "repair": "answer_key",
-    "edit": {"field": "answer", "find": "B", "replace": "D"},
-    "route": "auto_apply",
-    "confidence": 0.93,
-    "evidence": "Two independent solves give mu = 1/sqrt(3) = option D; the stored solution also ends at D; key says B",
-    "student_reply": "You're right. The answer key was wrong; it's (D). Fixed, thanks for flagging."
-  }
-]
+```
+ student report ──► code checks ──► blind solves ──► per-option / value checks
+ (comment = data,   parser, rule      2 model families    (and a tie-breaker on
+  never orders)     checks, claim     see only the        the other family)
+                    sorter, injection question: no key,
+                    detector          no comment
+                          │                 │                    │
+                          └─────────► signals ◄─────────────────┘
+                                         │
+                       ┌─────────────────▼─────────────────┐
+                       │ CODE DECIDES verdict / repair /   │◄── triage LLM: only what code
+                       │ route / confidence (D-001, D-016) │    can't settle; a contradiction
+                       └─────────────────┬─────────────────┘    → faculty
+                                         │
+                ┌────────────────────────▼────────────────────────┐
+                │ GUARDS: edit touches only allowed fields, find  │
+                │ is unique, risk-tiered auto bar (D-023), two    │
+                │ sources for content (D-020/021), injection flag │
+                │ blocks auto-apply (D-017/030/032)               │
+                └────────────────────────┬────────────────────────┘
+                                         │
+               reply LLM (facts from code) ──► REPLY CHECK: no false action, no answer
+                                                but the decision's; else code-built reply
+                                         │
+                       results.json ──► faculty console (static, precomputed)
 ```
 
-We score this file automatically against our ground truth.
+- Every LLM call is logged with its model, prompt version, tokens, latency and cache status
+  (`logs/llm-calls.jsonl`). Every run writes a summary (`logs/run-summary.json`).
+- Every tier runs on every report in shadow mode. In the final run, early exit would never have decided
+  differently.
 
----
+## Run it
 
-## Deliverables (all required)
+Python 3.10+ (standard library only, plus pytest for tests). Put API keys in `.env` (see `.env.example`).
 
-1. **GitHub repo** (public) with code + `results.json`.
-2. **Live URL** of the faculty console (Vercel / Render / Netlify / HF Spaces, any free tier). It must stay up for 7 days. If you're out of LLM credits, the console may load precomputed results, but say so.
-3. **`PROMPTS.md`**, which is mandatory and heavily weighted:
-   - Every prompt **inside your product**, verbatim, plus what you changed between versions and why.
-   - The prompts you gave **your AI coding assistant** (Claude / ChatGPT / Cursor / Copilot etc.) while building. Paste or export the key ones verbatim. We don't penalise AI use; we want to see *how* you direct it.
-   - 3 moments where the AI was wrong and how you caught it.
-   - **Design decisions log**: the key choices you made (architecture, prompts, UI, what to auto-apply vs send to a human), what you tried and dropped, and why.
-4. **`PRODUCT.md`**, at most 1 page:
-   - Who loses the most when a question is broken, and how your design reflects that.
-   - What you would **never** let the AI auto-apply, and why.
-   - One metric you'd watch in week 1.
-   - One idea beyond this brief that you'd pitch to us.
-5. **A 3-minute screen recording** (Loom / unlisted YouTube / Drive) walking through the console and one tricky case.
+```powershell
+python -m engine.run                         # all 44 reports -> results.json, logs/run-summary.json
+python -m engine.run --offline               # replay from the LLM cache only (no network)
+python -m engine.run --reports R001,R004     # a subset (results only under logs/runs/)
+python -m engine.run --swap-model openai/gpt-oss-20b    # robustness run (logs/runs/ only)
+python -m engine.run --questions eval/heldout/merged_questions.json `
+    --reports-file eval/heldout/heldout_reports.json --out eval/heldout/results_heldout.json
+python -m engine.bonus                       # question-level findings no report covered -> bonus_findings.json
 
-## How to submit
-**Reply to the email you received** with your repo link, live URL and video link, plus answers to:
-1. This is a remote, Monday-to-Saturday role for people who want to build real product used by lakhs of students, not an internship to tick a college box. Is that you?
-2. How many months can you commit?
-3. Earliest start date.
-4. In 2-3 lines, in your own words: why this work, why now?
+python -m eval.evaluate_run                  # score the latest run against the hand labels
+python -m eval.compare_runs logs/runs/<a> logs/runs/<b>
+python -m eval.fresh_injection_check [OUT.csv [IN.csv]]   # injection detector alone on a comment set
+python -m pytest tests
+```
 
-## How we evaluate (/100)
+With `--out`, the root `results.json` and `logs/run-summary.json` are left alone.
 
-| Area | Weight |
-|---|---|
-| Triage accuracy vs ground truth (auto-scored from `results.json`) | 25 |
-| Safety: no harmful auto-edits, scope respected, traps handled | 10 |
-| Faculty console: UX, visual design, does it actually help | 20 |
-| Product thinking: `PRODUCT.md`, prioritisation, student replies | 20 |
-| `PROMPTS.md`: how you orchestrate AI, honesty about failures | 15 |
-| Engineering: runs, deployed, clean, cost-aware | 10 |
+Console (`console/`, Vite + React):
 
-**Bonus:** our data has defects nobody reported. Find them.
+```powershell
+cd console
+npm install
+npm run data      # optional: rebuild public/data.json from the engine outputs (data.json is committed)
+npm run dev       # http://localhost:5173
+npm run build     # static site in dist/
+```
 
-Top submissions get a 30-minute call where we'll change a requirement live and watch you adapt. Plagiarised or copy-paste submissions are obvious from the prompt log; don't bother.
+## How this scales
 
-Questions? Reply to the email. Good luck. We're excited to see what you build.
+**Built:**
+- **Cost grows with broken questions, not reports.** Duplicate reports on a question share its question-level
+  calls (solves, extraction, audit, option checks) through a per-run memo, and LLM answers are cached by input
+  hash.
+- **Provider resilience:** a same-model fallback (Groq → OpenRouter after 60 s of rate limiting), and a hard
+  per-run spend cap: a paid call whose worst-case cost would cross the cap is never sent (D-022).
+- **Edits are surgical and checked:** `find` must occur exactly once, and only the repair's allowed fields
+  may change. The console can undo an auto-applied edit.
 
-*Acadza Technologies*
+**Designed, not built:**
+- **Dedupe per question version:** key the cache and the case on (question id, content hash), so a fixed
+  question gets a fresh look.
+- **Instant acknowledgement plus an async queue:** the student gets a reply at once, and verification runs in
+  the background in harm-first priority (the same ordering as the console, D-026).
+- **Spike circuit-breaker:** when one question suddenly gets many reports, pause auto-apply on it and send it
+  to faculty.
+- **Offline corpus precompute:** run the code checks and blind solves over the whole corpus ahead of time,
+  so most reports find their signals already computed.
+- **Provider pools:** several providers per model family, with fallback and per-pool spend caps.
+- **Versioned edits:** each edit hash-checked against the version it was made on, with undo, and re-grading
+  of past attempts when a key changes.
+- **Abuse controls:** per-student report rate limits and reporter reputation.
+- **Console in production:** a backend with auth, case locking so two reviewers don't take the same case,
+  and a server-side audit log.
+
+```
+ app ──report──► API ──ack──► student
+                  │
+                  ▼
+            queue (harm-first) ──► workers: code checks · blind solves · checks · code decides
+                  │                      │            ▲
+                  │                      ▼            │ cache / precomputed signals
+                  │              provider pools (fallback, spend caps)
+                  ▼
+     edit store (versioned, hash-checked, undo) ──► question service (+ re-grading)
+                  │
+                  ▼
+     faculty console (backend: auth, case locks, server-side audit)
+```
+
+## Honest notes
+
+- **44/44 is in-sample.** The prompts and rules were iterated on these 44 reports. The held-out set (26/32)
+  is the better estimate.
+- **Precomputed results.** The console makes no live AI calls; it reads `results.json` through
+  `console/public/data.json` (D-006).
+- **The audit log is in the browser** (localStorage), not on a server.
+- **Free-tier and cheap models on purpose** (Groq gpt-oss-120b/20b, OpenRouter deepseek-v4-flash). Safety is
+  meant to come from the harness, not the model (D-005).
+- **Known misses, diagnosed but not fixed:**
+  - P02: one wrong value check vetoes two agreeing solvers.
+  - P08: a definite duplicate-option finding is dropped when the comment reads as an answer dispute.
+  - Both went to a safe route; see `eval/heldout/README.md`.
+- **Injection gaps that remain:** Devanagari text, personas without a role label, and authority phrasings
+  outside the lists. They are listed in `eval/heldout/README.md`.
+
+## Bonus findings
+
+`bonus_findings.json` lists question-level issues that no report's outcome covers: **21 findings on 13
+questions**.
+- 8 come from code checks; 13 were added in manual review, each verified against the stored HTML (D-025).
+- By type: spelling 8, notation 7, markup_leak 4, solution_fix 1, wrong_chapter 1.
+- 1 could auto-apply under D-023. Each has evidence and, where possible, a guarded edit.
