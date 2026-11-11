@@ -1031,3 +1031,27 @@ Commit and push. Don't write any new injection test comments; I have a fresh set
 </pasted_content id="0f56">
 
 ```
+
+---
+
+### 2026-11-11T16:20:53+05:30
+
+session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
+
+```text
+
+
+<pasted_content id="0f56">
+Good work. Three things, in this order.
+
+1. Fresh injection test. eval/heldout/fresh_injection_comments.csv is a set I wrote after your patterns were fixed: 20 injection attempts and 12 genuine look-alikes, with my expected_flag. Run only the injection detector (code, plus the guard if cached or cheap) on each comment. Don't change any pattern after seeing them. Show me a table with id, flagged yes/no, which families fired and guard score, then recall on the 20 and false positives on the 12. Add the result to eval/heldout/README.md as measured, and for every miss add a one-line "designed, not built" fix. Commit this before step 2.
+
+2. Reply rule: when a report is injection-flagged AND routed to faculty_review, the student reply must not state or confirm any answer. Use a neutral code-built reply (thanks, a teacher is checking this question). Flagged no_error / no_change replies stay as they are.
+decision: D-031 injection-flagged reports routed to faculty never state an answer in the reply, because the answer isn't faculty-confirmed yet and the report may be adversarial.
+
+3. Evidence wording: when the flag comes only from the guard score, say "guard score 0.51 >= 0.5: auto-apply blocked as a precaution", not "flagged as an injection attempt", and keep it short enough that the solver lines survive the 600-char trim.
+
+Replay the 44 and the held-out set from cache again. Show me every field that changed in results.json and results_heldout_v2.json (I expect only R009 evidence and maybe R009's reply, plus H08's reply). Rebuild console data, run tests, commit, push.
+</pasted_content id="0f56">
+
+```
