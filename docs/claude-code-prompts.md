@@ -756,3 +756,104 @@ Check both modes with headless screenshots, then commit and push.
 </pasted_content id="8dee">
 
 ```
+
+---
+
+### 2026-11-11T10:16:33+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+
+
+<pasted_content id="8dee">
+Two console fixes, then the final engine run.
+
+1. The "Other" tab overflows: when active, "Auto-applied ▾" is a box wider than the sidebar and sticks out past its right edge. Fix:
+- The tab label is always just "Other ▾", styled exactly like "Needs you" and "Done" (same font, padding and active underline, no box or border). The tab row must fit inside the sidebar at every width, never overflow.
+- When an Other list is open, show a small heading line under the tabs, e.g. "Auto-applied · 15", in muted text.
+- Clicking "Other" opens a small menu (Auto-applied, No change, Bonus findings, each with its count; current one marked). Arrow keys, Enter, Esc; keep the 1–4 shortcuts.
+- Replace the native scrollbar in the queue with a thin, subtle one that matches the theme (no arrow buttons), in both modes.
+- Check both modes and phone width with screenshots.
+
+2. Tour: add a step after step 1 (Queue), highlighting the tabs:
+"Done: cases you've acted on. Other: fixes the AI already applied (review or undo them), cases with no change (spot-check), and bonus findings no student reported."
+Max 2 short lines. The tour becomes 7 steps; renumber, keep the placement rules (don't cover the next step's area), and update the tour test.
+
+Commit and push both.
+
+3. Final engine run: rerun all 44 with the current prompts (triage_v3 etc.) and write the root results.json. Score it against eval-labels.csv. If anything changed from the previous main run (verdict, repair, route, edit), list it and explain why. If it's still 44/44 with 0 wrong auto-applies, rebuild console/public/data.json from it, regenerate bonus_findings.json, and update logs/run-summary.json. Commit and push. Give me the final numbers: accuracy, routes, auto-applies, cost, time.
+</pasted_content id="8dee">
+
+```
+
+---
+
+### 2026-11-11T10:19:06+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+<task-notification>
+<task-id>byhgoe9kb</task-id>
+<tool-use-id>toolu_01RH3b7SUAgsTdYQhVA23vRS</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\77f3d0e8-4bb1-44c9-8f08-2d117cd48778\tasks\byhgoe9kb.output</output-file>
+<status>failed</status>
+<summary>Background command "Serve the built console" failed with exit code 1</summary>
+</task-notification>
+```
+
+---
+
+### 2026-11-11T10:44:20+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+<task-notification>
+<task-id>bsxyqxsx2</task-id>
+<tool-use-id>toolu_013u9vJj68hscY4V49UpMPF1</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\77f3d0e8-4bb1-44c9-8f08-2d117cd48778\tasks\bsxyqxsx2.output</output-file>
+<status>completed</status>
+<summary>Background command "Run the full engine on all 44 reports without cache" completed (exit code 0)</summary>
+</task-notification>
+```
+
+---
+
+### 2026-11-11T10:51:26+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+
+
+<pasted_content id="8dee">
+mistake: triage_v3's warning about notation made the model stop proposing stem_data edits at all (R006–R008 went from auto-apply to faculty). Caught by re-running all 44 rather than only the changed cases.
+
+Go with (a), plus:
+- triage_v4: state plainly that a missing-value fix is expected when the solution states the value, written the way a student reads it (e.g. "of 95.5 mH"). Keep the notation rule as one short line; code enforces it anyway. If triage declines an edit, it must say why.
+- R024: code settles answer_form when the student says the unit is missing AND the check confirms the stem states no unit. Same claim-plus-check rule as spelling, so it no longer depends on run-to-run model variation. Add as a decision.
+- Tour step 2 text: "Done: what you've acted on. Other: AI-applied fixes, no-change cases, bonus finds."
+- Give the main case pane the same thin scrollbar as the queue.
+
+Then rerun all 44 so every result comes from the same prompt versions (reuse cached solves; only triage/replies re-call). If 44/44 with 0 wrong auto-applies: rebuild console/public/data.json, regenerate bonus_findings.json, update run-summary, commit, push. Report final numbers. If not, stop and tell me.
+</pasted_content id="8dee">
+
+```
+
+---
+
+### 2026-11-11T10:58:09+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+<task-notification>
+<task-id>bb1yolyd1</task-id>
+<tool-use-id>toolu_016qn37LCumbd4MoQkaskW6w</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\77f3d0e8-4bb1-44c9-8f08-2d117cd48778\tasks\bb1yolyd1.output</output-file>
+<status>completed</status>
+<summary>Background command "Run all 44 reports, reusing cached solves" completed (exit code 0)</summary>
+</task-notification>
+```

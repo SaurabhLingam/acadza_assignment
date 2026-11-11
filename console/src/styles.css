@@ -129,13 +129,14 @@ button, input, textarea { font: inherit; color: inherit; }
 .menu .menu-label { flex: 1; }
 .menu button.on .menu-label { font-weight: 600; }
 .rows { list-style: none; margin: 0; padding: 4px; overflow-y: auto; flex: 1; }
-/* thin themed scrollbar, no arrow buttons: WebKit/Blink pseudo-elements; Firefox gets the standard properties */
-.rows::-webkit-scrollbar { width: 8px; }
-.rows::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
-.rows::-webkit-scrollbar-track { background: transparent; }
-.rows::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 8px; border: 2px solid var(--surface); }
-.rows::-webkit-scrollbar-thumb:hover { background: var(--faint); }
-@supports (-moz-appearance: none) { .rows { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; } }
+/* thin themed scrollbars (queue and case pane), no arrow buttons: WebKit/Blink pseudo-elements; Firefox gets the standard properties */
+.rows::-webkit-scrollbar, .main::-webkit-scrollbar { width: 8px; }
+.rows::-webkit-scrollbar-button, .main::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.rows::-webkit-scrollbar-track, .main::-webkit-scrollbar-track { background: transparent; }
+.rows::-webkit-scrollbar-thumb, .main::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 8px; border: 2px solid var(--surface); }
+.main::-webkit-scrollbar-thumb { border-color: var(--bg); }
+.rows::-webkit-scrollbar-thumb:hover, .main::-webkit-scrollbar-thumb:hover { background: var(--faint); }
+@supports (-moz-appearance: none) { .rows, .main { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; } }
 .row {
   display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left; background: none; border: 0;
   padding: 8px 10px; border-radius: 7px; cursor: pointer;

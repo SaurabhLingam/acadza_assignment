@@ -27,7 +27,7 @@ ROLES = {
     "tiebreak":     ("openrouter", "deepseek/deepseek-v4-flash", "option_check", 2, 6000),
     "value_check":  ("groq", "openai/gpt-oss-120b", "value_check", 1, 4000),       # integerQuestion
     "value_tiebreak": ("openrouter", "deepseek/deepseek-v4-flash", "value_check", 1, 6000),
-    "triage":       ("groq", "openai/gpt-oss-120b", "triage", 3, 4000),
+    "triage":       ("groq", "openai/gpt-oss-120b", "triage", 4, 4000),
     "reply":        ("groq", "openai/gpt-oss-20b", "reply", 4, 600),
 }
 

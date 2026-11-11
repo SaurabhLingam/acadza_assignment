@@ -234,6 +234,7 @@ def run_triage(client: Client, pq: ParsedQuestion, report, task: str, taxonomy: 
     rep = d.get("repair") if d.get("repair") in taxonomy["repairs"] else None
     return {"ok": bool(r.data), "verdict": v, "repair": rep, "edit": d.get("edit") if isinstance(d.get("edit"), dict) else None,
             "option_content": d.get("option_content") or None, "disputed_item": d.get("disputed_item"),
+            "no_edit_reason": str(d.get("no_edit_reason") or "")[:200] or None,
             "other_problems": d.get("other_problems") or [], "evidence": str(d.get("evidence") or "")[:300],
             "invalid_keys": [k for k in ("verdict", "repair") if d.get(k) not in (None, "", "null")
                              and d.get(k) not in (taxonomy["verdicts"] if k == "verdict" else taxonomy["repairs"])]}

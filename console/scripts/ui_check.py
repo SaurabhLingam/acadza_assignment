@@ -72,8 +72,13 @@ def main() -> None:
                     lines = p.locator("#tour-text").inner_text().split("\n")
                     check(len(lines) == 2 and lines[0].startswith("Done:") and lines[1].startswith("Other:"),
                           f"{theme}: step 2 is two lines, Done then Other")
+                    h = p.evaluate("(() => { const t = document.getElementById('tour-text'); return Math.round(t.offsetHeight / parseFloat(getComputedStyle(t).lineHeight)); })()")
+                    check(h <= 2, f"{theme}: step 2 renders on {h} lines")
                 p.keyboard.press("ArrowRight" if k % 2 else "Enter")
             check(p.locator(".tour-pop").count() == 0, f"{theme}: tour closes after the last step")
+            sm = p.evaluate("(() => { const r = document.querySelector('.main'); return [r.scrollHeight > r.clientHeight, r.offsetWidth - r.clientWidth]; })()")
+            check(sm[0] and 0 < sm[1] <= 8, f"{theme}: case pane scrollbar is thin ({sm[1]}px, first Needs-you case)")
+            shot(p, f"{theme}_case_scrollbar")
             p.reload()
             p.wait_for_selector(".case")
             p.wait_for_timeout(400)

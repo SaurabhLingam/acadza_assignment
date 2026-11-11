@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export const TOUR_STEPS: { target: string; title: string; text: string; wide?: boolean }[] = [
   { target: "queue", title: "Queue", text: "Cases that need you, most harmful first. Grouped by question." },
-  { target: "tabs", title: "Lists", wide: true, text: "Done: cases you've acted on.\nOther: fixes the AI already applied (review or undo them), cases with no change (spot-check), and bonus findings no student reported." },
+  { target: "tabs", title: "Lists", wide: true, text: "Done: what you've acted on.\nOther: AI-applied fixes, no-change cases, bonus finds." },
   { target: "headline", title: "Headline", text: "What's wrong, in one sentence." },
   { target: "sure", title: "How sure", text: "How much independent evidence agrees. Open “Show evidence” for the grid." },
   { target: "changes", title: "What changes", text: "Before and after. Nothing goes live without your action here." },

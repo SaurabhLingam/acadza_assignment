@@ -230,6 +230,29 @@
     "check": "run_together_words",
     "strength": "signal",
     "field": "solution",
+    "detail": "'riceis' looks like two words run together: 'rice is'.",
+    "evidence_text": "riceis",
+    "evidence_raw": "riceis",
+    "evidence_raw_unique": true,
+    "reports_on_question": [
+      "R040"
+    ],
+    "source": "code_check",
+    "proposed_edit": {
+      "field": "solution",
+      "find": "riceis",
+      "replace": "rice is"
+    },
+    "edit_how": "code: split run-together words",
+    "could_auto_apply": false,
+    "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply"
+  },
+  {
+    "questionId": "6264197209f4fd65f58f5707",
+    "repair": "spelling",
+    "check": "run_together_words",
+    "strength": "signal",
+    "field": "solution",
     "detail": "'ofvitamin' looks like two words run together: 'of vitamin'.",
     "evidence_text": "ofvitamin",
     "evidence_raw": "ofvitamin",
@@ -246,39 +269,6 @@
     "edit_how": "code: split run-together words",
     "could_auto_apply": false,
     "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply"
-  },
-  {
-    "questionId": "6264197209f4fd65f58f5707",
-    "repair": "spelling",
-    "check": "spelling_suspect",
-    "strength": "signal",
-    "field": "solution",
-    "detail": "'Canola' and 'canolla' differ by one edit; one is likely misspelled.",
-    "evidence_text": "Canola",
-    "evidence_raw": "Canola",
-    "evidence_raw_unique": true,
-    "reports_on_question": [
-      "R040"
-    ],
-    "source": "code_check",
-    "proposed_edit": null,
-    "edit_how": "two spellings of one word appear the same number of times; code cannot tell which is the misspelling",
-    "could_auto_apply": false,
-    "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply",
-    "occurrences": [
-      {
-        "field": "solution",
-        "text": "Canola",
-        "raw": "Canola",
-        "raw_unique": true
-      },
-      {
-        "field": "question",
-        "text": "Canolla",
-        "raw": "Canolla",
-        "raw_unique": true
-      }
-    ]
   },
   {
     "questionId": "6264197209f4fd65f58f5707",

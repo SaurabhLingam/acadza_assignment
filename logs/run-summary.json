@@ -1,17 +1,21 @@
 {
-  "run_id": "20261110T182626Z",
+  "run_id": "20261111T052525Z",
+  "swapped_roles": {},
   "reports_requested": 44,
   "reports_done": 44,
   "full_run": true,
   "stopped": null,
-  "total_time_s": 1.2,
+  "total_time_s": 164.5,
   "total_tokens": {
-    "in": 0,
-    "out": 0
+    "in": 83260,
+    "out": 19289
   },
-  "spend_usd": 0.0,
+  "spend_usd": 0.01457,
   "spend_cap_usd": 0.5,
-  "spend_by_model": {},
+  "spend_by_model": {
+    "groq:openai/gpt-oss-120b": 0.0,
+    "openrouter:openai/gpt-oss-120b": 0.01457
+  },
   "calls_per_stage": {
     "guard": 44,
     "solve": 78,
@@ -27,8 +31,8 @@
   "cases_settled_per_tier": {
     "option_checks+tiebreak": 6,
     "solver_2+extract+audit": 6,
-    "code": 18,
-    "triage": 4,
+    "code": 19,
+    "triage": 3,
     "solver_1+guard": 10
   },
   "routed_to_faculty": 10,
@@ -55,12 +59,14 @@
     ]
   },
   "calls_by_provider": {
-    "fallback_calls": 0,
+    "fallback_calls": 44,
     "groq:meta-llama/llama-prompt-guard-2-86m (cache)": 44,
-    "groq:openai/gpt-oss-120b (cache)": 133,
+    "groq:openai/gpt-oss-120b (cache)": 96,
     "openrouter:deepseek/deepseek-v4-flash (cache)": 47,
     "groq:openai/gpt-oss-20b (cache)": 83,
-    "openrouter:openai/gpt-oss-120b (cache) (fallback)": 26
+    "groq:openai/gpt-oss-120b": 1,
+    "openrouter:openai/gpt-oss-120b (fallback)": 44,
+    "openrouter:openai/gpt-oss-120b (cache) (fallback)": 18
   },
-  "results_file": "logs\\runs\\20261110T182626Z\\results.json"
+  "results_file": "logs\\runs\\20261111T052525Z\\results.json"
 }

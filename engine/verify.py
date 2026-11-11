@@ -8,7 +8,8 @@ Outcomes:
 
 Rules are generic. In particular:
   * answer_form and spelling hits are signals, never settlements on their own.
-    Spelling settles only when the student names the word and the check agrees.
+    Spelling settles only when the student names the word and the check agrees; answer_form only
+    when the student says the unit is missing and the check finds no unit in the stem (D-028).
   * a vague or junk comment is not `not_actionable` when checks found something:
     the verdict then depends on the checks, so it goes to the next tier.
   * a disagreement between the solution and the key never settles: code can see
@@ -45,6 +46,12 @@ class Decision:
     route: str = ""
     basis: str = ""
     findings_used: list[str] = field(default_factory=list)
+
+
+# "unit not mentioned", "no unit given", "unit nahi diya": the student says the unit is missing (D-028)
+_UNIT_MISSING_CLAIM = re.compile(
+    r"\bunits?\b.{0,40}?\b(?:not\s+(?:given|mentioned|stated|provided|specified|written)|missing|nahi|nhi|absent)\b"
+    r"|\b(?:no|missing|without)\s+units?\b", re.I)
 
 
 def _route(repair: str, taxonomy: dict) -> str:
@@ -229,6 +236,13 @@ def decide(report: Report, claim: Claim, pq: ParsedQuestion, findings: list[Find
 
     if p == "answer_form":
         hits = _by(findings, "unit_not_stated")
+        # D-028: like spelling, claim + check settles it. The student must say the *unit* is missing (not
+        # rounding or decimal places), and the check must confirm the stem states no unit while the solution
+        # works in one.
+        if hits and _UNIT_MISSING_CLAIM.search(report.comment or ""):
+            return Decision(CODE_SETTLED, "defect", "answer_form", _route("answer_form", taxonomy),
+                            "Student says the unit is missing; check agrees: " + _summ(hits),
+                            findings_used=["unit_not_stated"])
         return Decision(NEEDS_LLM, basis=(
             "answer_form claim; the unit check is a signal, not a settlement"
             + (f": {_summ(hits)}" if hits else " and it found nothing.")), findings_used=[h.check for h in hits])

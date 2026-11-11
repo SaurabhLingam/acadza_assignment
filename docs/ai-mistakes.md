@@ -33,3 +33,9 @@ Times the AI (coding assistant or in-product LLM) got something wrong. Add entri
 - **What the AI did wrong:** the 20b run would have put "95.5×10^−3 H" live. In R007's stem_data edit, triage copied the clean-text notation it is shown (`^` for superscripts) into the replacement; the value was right, but HTML would show the caret. It passed every guard and auto-applied.
 - **How I caught it:** found by the robustness test (D-005): `eval/compare_runs.py` lists auto-applied edits that differ from the main run, and R007's read "an inductance of 95.5×10^−3 H" where the main run had "inductance of 95.5 mH".
 - **What I changed:** an edit guard: inserted text must not contain characters that would render literally (^, \, _{, raw LaTeX); values are written the way a student reads them (e.g. "95.5 mH"). The guard checks visible text only and blocks additions (`engine/edits.py`, test `test_guard_blocks_notation_that_renders_literally`); triage_v3 tells the model the same.
+
+## M-005: triage_v3's notation warning stopped stem_data edits altogether
+- **Date:** 2026-11-11
+- **What the AI did wrong:** triage_v3's warning about notation made the model stop proposing stem_data edits at all (R006–R008 went from auto-apply to faculty).
+- **How I caught it:** Caught by re-running all 44 rather than only the changed cases.
+- **What I changed:** triage_v4: states plainly that a missing-value fix is expected when the solution states the value, written the way a student reads it; the notation rule is one short line (code enforces it anyway); if triage declines an edit it must say why (`no_edit_reason`).

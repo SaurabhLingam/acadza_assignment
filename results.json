@@ -82,11 +82,11 @@
     "edit": {
       "field": "question",
       "find": "solid copper cube",
-      "replace": "solid copper cube of side 10 cm"
+      "replace": "solid copper cube of side length 10 cm"
     },
     "route": "auto_apply",
     "confidence": 0.86,
-    "evidence": "Key: 50 mm^3. gpt-oss-120b (blind solve): 50000 mm^3; reports missing data (original volume of the copper cube), so not counted. deepseek-v4-flash (blind solve): 50000 mm^3; reports missing data (side length or volume of the cube is not…), so not counted. Stored solution (gpt-oss-20b) ends at 50 mm^3. Re-solve with \"solid copper cube of side 10 cm\" in the stem reproduces the key: gpt-oss-120b (re-solve): 50 mm^3; deepseek-v4-flash (re-solve): 50 mm^3. Audit (gpt-oss-120b): solution uses values the stem never gives: cube side length 10×10^−2 m.",
+    "evidence": "Key: 50 mm^3. gpt-oss-120b (blind solve): 50000 mm^3; reports missing data (original volume of the copper cube), so not counted. deepseek-v4-flash (blind solve): 50000 mm^3; reports missing data (side length or volume of the cube is not…), so not counted. Stored solution (gpt-oss-20b) ends at 50 mm^3. Re-solve with \"solid copper cube of side length 10 cm\" in the stem reproduces the key: gpt-oss-120b (re-solve): 50 mm^3; deepseek-v4-flash (re-solve): 50 mm^3. Audit (gpt-oss-120b): solution uses values the stem never gives: cube side length 10×10^−2 m.",
     "student_reply": "Thanks for pointing that out. The question omitted the cube's edge length, so we can't compute the volume. The fix is live now."
   },
   {
@@ -153,7 +153,7 @@
     },
     "route": "auto_apply",
     "confidence": 0.86,
-    "evidence": "Key: (C) [blank]. gpt-oss-120b (blind solve): 1, which matches no listed option. deepseek-v4-flash (blind solve): 1, which matches no listed option. Stored solution (gpt-oss-20b) ends at \"The forces are equal and opposite.\". Content \"1:1\" for the blank option agreed by 2 independent sources: gpt-oss-120b blind solve (1); deepseek-v4-flash blind solve (1). Triage (gpt-oss-120b): Option C is blank while the answer key selects C, and the solution shows the forces are equal, implying a 1:1 ratio.",
+    "evidence": "Key: (C) [blank]. gpt-oss-120b (blind solve): 1, which matches no listed option. deepseek-v4-flash (blind solve): 1, which matches no listed option. Stored solution (gpt-oss-20b) ends at \"The forces are equal and opposite.\". Content \"1:1\" for the blank option agreed by 2 independent sources: gpt-oss-120b blind solve (1); deepseek-v4-flash blind solve (1). Triage (gpt-oss-120b): Option C is blank (definite option_blank) and solvers note that the correct force ratio 1:1 is not provided among the options.",
     "student_reply": "Thanks for pointing that out! The correct answer is (C) 1:1, kyunki Coulomb force magnitude dono charges ke liye same hai, isliye ratio 1:1 hota hai. Question ab fix ho gaya hai aur live hai."
   },
   {
@@ -168,7 +168,7 @@
     },
     "route": "auto_apply",
     "confidence": 0.62,
-    "evidence": "Key: (A) Epithellial tisue. gpt-oss-120b (blind solve): (A), letter only (no value given). deepseek-v4-flash (blind solve): (A), letter only (no value given). Stored solution (gpt-oss-20b) ends at (A). Triage (gpt-oss-120b): Spelling suspect signals show 'Epithellial tisue' is misspelled; correcting to 'Epithelial tissue' fixes the error.",
+    "evidence": "Key: (A) Epithellial tisue. gpt-oss-120b (blind solve): (A), letter only (no value given). deepseek-v4-flash (blind solve): (A), letter only (no value given). Stored solution (gpt-oss-20b) ends at (A). Triage (gpt-oss-120b): Spelling suspect signals show 'Epithellial tisue' is misspelled; correcting restores proper option text.",
     "student_reply": "Thanks for spotting the typo. The correct answer is (A) Epithelial tissue, because the inner lining of the small intestine is simple columnar epithelium for absorption; other tissues are in submucosa or muscularis."
   },
   {
@@ -234,7 +234,7 @@
     "repair": null,
     "edit": null,
     "route": "no_change",
-    "confidence": 0.42,
+    "confidence": 0.95,
     "evidence": "Code check: Student names 'mere'; history entry 'Spelling mistake' by faculty at 2026-11-07T10:42:00Z (after the report at 2026-11-04T02:08:00Z) mentions it, and 'mere' no longer appears in the live text.",
     "student_reply": "Thanks for checking carefully. The question has been updated."
   },
@@ -257,7 +257,7 @@
     "edit": null,
     "route": "faculty_review",
     "confidence": 0.97,
-    "evidence": "Key: (B) 16.8 eV. gpt-oss-120b (blind solve): 16.7125 eV = (B). deepseek-v4-flash (blind solve): 16.8 eV = (B). Stored solution (gpt-oss-20b) ends at 16.8 eV = (B). Option checks: (B) correct [gpt-oss-120b]. Sent to faculty: no edit that passes the guards.",
+    "evidence": "Key: (B) 16.8 eV. gpt-oss-120b (blind solve): 16.7125 eV = (B). deepseek-v4-flash (blind solve): 16.8 eV = (B). Stored solution (gpt-oss-20b) ends at 16.8 eV = (B). Option checks: (B) correct [gpt-oss-120b]. Sent to faculty: no edit that passes the guards: solution_fix auto-applies only as a final-value correction that every signal backs.",
     "student_reply": "Shukriya, aapne sahi pakda ki solution mein mistake hai. Sahi answer (B) 16.8 eV hai, kyunki λ=h/p se p=h/λ, phir K=p^2/(2m_e) aur usse joules se eV mein convert karte hain. Ek teacher isko review karega."
   },
   {
@@ -333,8 +333,8 @@
       "replace": "equal to (in N)"
     },
     "route": "auto_apply",
-    "confidence": 0.62,
-    "evidence": "Key: 20. gpt-oss-120b (blind solve): 30 N. deepseek-v4-flash (blind solve): 19.6 N. Stored solution (gpt-oss-20b) ends at 20 N. Value checks: key value incorrect [gpt-oss-120b], correct [deepseek-v4-flash]; 30 correct [gpt-oss-120b], incorrect [deepseek-v4-flash]; 19.6 correct [gpt-oss-120b], correct [deepseek-v4-flash]. Triage (gpt-oss-120b): The question does not state the unit for the frictional force, triggering an answer_form issue.",
+    "confidence": 0.95,
+    "evidence": "Code check: Student says the unit is missing; check agrees: unit_not_stated: Integer question does not state the unit or form of the answer; the solution works in 'N'.",
     "student_reply": "Thanks for pointing that out. The question has been updated to include the required unit. You can now solve it with the correct units."
   },
   {
@@ -421,7 +421,7 @@
     "repair": null,
     "edit": null,
     "route": "no_change",
-    "confidence": 0.86,
+    "confidence": 0.66,
     "evidence": "Key: 8 cm. gpt-oss-120b (blind solve): 8 cm. deepseek-v4-flash (blind solve): 8 cm. Stored solution (gpt-oss-20b) ends at 0.08 m. Value checks: key value correct [gpt-oss-120b].",
     "student_reply": "Humne ise alag se dobara solve kiya: sahi answer 8 cm hai, aur question theek hai."
   },
@@ -508,13 +508,13 @@
     "verdict": "defect",
     "repair": "spelling",
     "edit": {
-      "field": "solution",
-      "find": "riceis",
-      "replace": "rice is"
+      "field": "question",
+      "find": "Canolla",
+      "replace": "Canola"
     },
     "route": "auto_apply",
     "confidence": 0.86,
-    "evidence": "Key: (C) Golden rice. gpt-oss-120b (blind solve): (C), letter only (no value given). deepseek-v4-flash (blind solve): (C), letter only (no value given). Stored solution (gpt-oss-20b) ends at (C). Triage (gpt-oss-120b): The solution contains the run‑together word 'riceis' which is a spelling error.",
+    "evidence": "Key: (C) Golden rice. gpt-oss-120b (blind solve): (C), letter only (no value given). deepseek-v4-flash (blind solve): (C), letter only (no value given). Stored solution (gpt-oss-20b) ends at (C). Triage (gpt-oss-120b): The option B is misspelled as 'Canolla' (spelling_suspect), and the solution contains run‑together words like 'riceis' and 'ofvitamin' indicating spelling errors.",
     "student_reply": "Thanks for spotting the typo. The correct answer is (C) Golden rice, as it provides beta‑carotene to prevent vitamin A deficiency blindness."
   },
   {

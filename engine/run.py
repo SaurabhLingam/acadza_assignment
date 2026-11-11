@@ -403,7 +403,8 @@ class Runner:
         if not e and s.triage and s.triage.get("edit") and s.triage.get("repair") == d.repair:
             e, how = map_clean_edit(pq, s.triage["edit"])
         if not e:
-            return None, how, ["no edit"]
+            why = (s.triage or {}).get("no_edit_reason")
+            return None, how + (f"; triage gave no edit: {why}" if why else ""), ["no edit"]
         fails = guard(e, d.repair, pq, self.tax)
         if how.startswith("llm: mapped") and e["field"] in ("question", "solution"):
             if re.findall(r"<[^>]*>", e["find"]) != re.findall(r"<[^>]*>", e["replace"]):
