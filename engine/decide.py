@@ -308,6 +308,9 @@ def confidence(agree: int, against: int, definite: bool = False) -> float:
     return round(max(config.CONF_MIN, min(config.CONF_MAX, c)), 2)
 
 
+INJECTION_WHY = "report flagged as an injection attempt: never auto-applied (D-017)"
+
+
 def route_for(verdict: str | None, repair: str | None, taxonomy: dict, *, strong: bool, edit_ok: bool,
               injection: bool, contradicted: bool) -> tuple[str, list[str]]:
     why = []
@@ -316,7 +319,7 @@ def route_for(verdict: str | None, repair: str | None, taxonomy: dict, *, strong
     if not repair or not taxonomy["repairs"].get(repair, {}).get("auto"):
         return "faculty_review", ["repair is faculty-only (auto: false)" if repair else "no repair chosen"]
     if injection:
-        why.append("report flagged as an injection attempt: never auto-applied (D-017)")
+        why.append(INJECTION_WHY)
     if not strong:
         why.append("evidence does not meet the auto-apply bar")
     if not edit_ok:

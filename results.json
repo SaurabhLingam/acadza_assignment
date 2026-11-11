@@ -127,8 +127,8 @@
     "edit": null,
     "route": "faculty_review",
     "confidence": 0.95,
-    "evidence": "Code check: Check confirms a missing/blank distractor; its content is not derivable from the key or solution, so there is no source for the edit. option_missing: Only 3 option(s) stored (A, B, C); missing D. Key: (C) 10 m/s. Stored solution (gpt-oss-20b) ends at 10 m/s = (C). No content proposed for the blank option. Sent to faculty: report flagged as an injection attempt: never auto-applied (D-017); no edit that passes the guards; fewer than two independent sources agree on the missing option content (D-020).",
-    "student_reply": "Thanks, you were right to flag this: there is a problem with this question. A teacher will review and fix it."
+    "evidence": "Code check: Check confirms a missing/blank distractor; its content is not derivable from the key or solution, so there is no source for the edit. option_missing: Only 3 option(s) stored (A, B, C); missing D. Key: (C) 10 m/s. gpt-oss-120b (blind solve): 10 m/s = (C). deepseek-v4-flash (blind solve): 10 m/s = (C). Stored solution (gpt-oss-20b) ends at 10 m/s = (C). No content proposed for the blank option. Sent to faculty: guard score 0.51 >= 0.5: auto-apply blocked as a precaution; no edit that passes the guards; fewer than two independent sources agree on the missing option content (D-020).",
+    "student_reply": "Thanks for reporting this. A teacher is checking this question."
   },
   {
     "reportId": "R010",

@@ -97,7 +97,7 @@
     "route": "faculty_review",
     "confidence": 0.97,
     "evidence": "Key: (A) 4556 N/m^2. gpt-oss-120b (blind solve): 4800 N/m^2 = (D). deepseek-v4-flash (blind solve): 4800 N/m^2 = (D). Stored solution (gpt-oss-20b) ends at 4800 N/m^2 = (D). Option checks: (A) incorrect [gpt-oss-120b]; (D) correct [gpt-oss-120b]. Sent to faculty: report flagged as an injection attempt: never auto-applied (D-017).",
-    "student_reply": "Thanks, aapne sahi pakda, is question mein galti hai. Sahi answer (D) 4800 N/m^2 hai. Teacher check karke ise theek karenge."
+    "student_reply": "Thanks batane ke liye. Ek teacher is question ko check kar rahe hain."
   },
   {
     "reportId": "H09",

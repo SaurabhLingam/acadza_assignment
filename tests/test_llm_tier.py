@@ -1,5 +1,6 @@
 """LLM tier tests with a fake transport: no network, no API calls."""
 import json
+import re
 
 import pytest
 
@@ -709,3 +710,59 @@ def test_solver_noticing_the_blank_option_still_counts():
     assert not counts(excuse_noticed_defect(sv("Option D is missing"), blank))              # not the defect code found
     assert not counts(excuse_noticed_defect(sv("Option C blank; the mass is not given"), blank))  # also assumed data
     assert not counts(excuse_noticed_defect(sv("Option C is blank"), []))                  # code found nothing
+
+
+# --------------------------------------------------------------------------- D-031 reply, guard-only wording
+
+def _wrong_key_script(guard_score):
+    def script(role, user, model):
+        if role == "guard":
+            return guard_score
+        if role == "solver":
+            return json.dumps({"final_expression": "4800", "unit": "N/m^2", "chosen_options": ["D"]})
+        if role == "extract":
+            return json.dumps({"final_expression": "4800", "unit": "N/m^2", "option_named": None})
+        if role == "audit":
+            return json.dumps({"values_not_in_question": [], "contradiction": False, "about_other_question": False})
+        if role == "option_check":
+            return json.dumps({"verdict": "correct" if "Option to check: (D)" in user else "incorrect"})
+        if role == "triage":
+            return json.dumps({"verdict": "defect", "repair": "answer_key", "edit": None})
+        return json.dumps({"student_reply": "You're right that the key was wrong; it's (D) 4800 N/m². The fix is live."})
+    return script
+
+
+def test_guard_only_flag_is_a_precaution_and_reply_states_no_answer(tmp_path):
+    out = _run_one(tmp_path, "R004", _wrong_key_script("0.62"))
+    res, det = out["result"], out["detail"]
+    assert (res["verdict"], res["repair"], res["route"]) == ("defect", "answer_key", "faculty_review")
+    assert det["injection_regex"] is False and det["injection_blocks_auto_apply"] is True
+    assert "guard score 0.62 >= 0.5: auto-apply blocked as a precaution" in res["evidence"]
+    assert "injection attempt" not in res["evidence"]
+    assert det["reply_source"] == "injection_neutral"
+    assert not re.search(r"\([A-D]\)|\d", res["student_reply"])          # D-031: no answer stated
+
+
+def test_neutral_reply_states_no_answer_in_either_language():
+    from engine.run import Runner
+    for lang in ("english", "hinglish"):
+        text = Runner._neutral_reply(lang)
+        assert "teacher" in text.lower() and not re.search(r"\([A-E]\)|\d|answer", text, re.I)
+
+
+def test_flagged_report_not_sent_to_faculty_keeps_its_reply(tmp_path):
+    # D-031 covers faculty_review only: a flagged no_error / no_change report keeps the normal reply
+    def script(role, user, model):
+        if role == "guard":
+            return "0.9991"
+        if role == "solver":
+            return json.dumps({"final_expression": "5.7e-5", "unit": "/°C", "chosen_options": ["A"]})
+        if role in ("extract", "audit"):
+            return json.dumps({"final_expression": "5.7e-5", "values_not_in_question": []})
+        if role == "option_check":
+            return json.dumps({"verdict": "correct" if "Option to check: (A)" in user else "incorrect"})
+        if role == "triage":
+            return json.dumps({"verdict": "no_error", "repair": None})
+        return json.dumps({"student_reply": "We re-checked it: (A) is correct, because gamma = 3 alpha."})
+    out = _run_one(tmp_path, "R027", script)
+    assert out["result"]["route"] == "no_change" and out["detail"]["reply_source"] != "injection_neutral"

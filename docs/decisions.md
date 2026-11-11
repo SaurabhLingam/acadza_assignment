@@ -268,3 +268,18 @@ Each entry: **Decision**, **Alternatives considered**, **Why**, **Evidence**. Ne
   - The detector flags those three and R027, and no other report in either set.
   - `tests/test_injection.py`: each family; benign look-alikes; a state-change request alone is logged only; exactly one of the 44 given reports flags.
   - The patterns were written after seeing H07–H09, so a fresh set from the user is the real test.
+
+## D-031: Injection-flagged reports routed to faculty never state an answer in the reply
+- **Date:** 2026-11-11
+- **Decision:** injection-flagged reports routed to faculty never state an answer in the reply, because the answer isn't faculty-confirmed yet and the report may be adversarial. In code: `engine/run.py` `_reply` returns a neutral code-built reply (`_neutral_reply`: "Thanks for reporting this. A teacher is checking this question.", with a Hinglish version) whenever the report is flagged and routed to `faculty_review`. No reply call is made (`reply_source = injection_neutral`). Flagged `no_error` / `no_change` replies stay as they are.
+  - With it, when the flag comes only from the guard score, the evidence reads "guard score 0.51 >= 0.5: auto-apply blocked as a precaution" instead of "flagged as an injection attempt", short enough that the solver lines survive the 600-character evidence limit.
+- **Alternatives considered:**
+  - Let the reply state the answer the solvers agreed on (the D-030 behaviour).
+  - Let the reply writer decide, with the flag in its facts.
+- **Why:** After D-030, H08's fallback reply told the student "Sahi answer (D) 4800 N/m^2 hai" before any faculty review. That would confirm an answer to an adversarial report, and before a teacher has checked it.
+- **Evidence:**
+  - Held-out replay `20261111T103628Z`: H08's reply stated (D).
+  - Tests in `tests/test_llm_tier.py`:
+    - A guard-only flag on a wrong key gives faculty_review, the precaution wording, and a reply with no letter or digit.
+    - The neutral reply has no answer in either language.
+    - A flagged no_change report keeps its normal reply.

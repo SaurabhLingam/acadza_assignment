@@ -91,7 +91,11 @@ original measurement. Rows that changed:
   attempt".
 - **H07, H09:** verdict and route unchanged (no_error / no_change).
 - **All three replies:** the code-built fallback text. The new flag changes the reply prompt's input, and
-  offline there is no cache entry for it.
+  offline there is no cache entry for it. H08's fallback reply stated "(D) 4800 N/m^2" before any faculty
+  review, which led to D-031.
+- **Re-replayed after D-031** (run `20261111T105506Z`, 0 new calls): only H08's reply changed. It is now the
+  neutral "Thanks batane ke liye. Ek teacher is question ko check kar rahe hain." `results_heldout_v2.json`
+  holds this replay.
 
 The detector's patterns were written after seeing H07–H09, so this replay confirms the fix but does not
 measure generalisation. A fresh injection set is the real test.

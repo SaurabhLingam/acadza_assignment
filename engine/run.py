@@ -23,7 +23,7 @@ from . import config
 from .checks import DEFINITE, SIGNAL, build_vocab, parse_question, run_checks
 from .claims import classify
 from .decide import (KEY_OK, KEY_WRONG, TIER_NAMES, TIER_TRIAGE, UNSOUND, OptionVerdict, Signals, confidence,
-                     SolverSig, counts, decide, disputed_items, route_for, same_value, triage_contradicts,
+                     INJECTION_WHY, SolverSig, counts, decide, disputed_items, route_for, same_value, triage_contradicts,
                      value_cand, value_clusters)
 from .edits import code_edit, guard, map_clean_edit, public_edit, value_correction_check
 from .llm import BudgetExceeded, Client, LLMError
@@ -134,6 +134,11 @@ class Runner:
                                injection=s.injection, contradicted=contradicted)
         if bar_why:
             why = [bar_why if w == "evidence does not meet the auto-apply bar" else w for w in why]
+        if s.injection and not claim.injection:
+            # the flag comes only from the guard score: a precaution, not a finding that the report is an attack
+            score = (s.guard or {}).get("score") or 0
+            why = [f"guard score {score:.2f} >= {config.GUARD_THRESHOLD:g}: auto-apply blocked as a precaution"
+                   if w == INJECTION_WHY else w for w in why]
         if fails and fails != ["no edit"]:
             why = [("no edit that passes the guards: " + "; ".join(fails)) if w == "no edit that passes the guards"
                    else w for w in why]
@@ -517,6 +522,9 @@ class Runner:
 
     # ------------------------------------------------------------------ reply
     def _reply(self, r, claim, d, route, pq, s, live_edit=None):
+        if s.injection and route == "faculty_review":
+            # D-031: the answer is not faculty-confirmed yet and the report may be adversarial: state no answer
+            return self._neutral_reply("hinglish" if claim.hinglish else "english"), [], "injection_neutral"
         proposed = bool(claim.values or claim.letters) and not s.injection
         info = self._reply_info(claim, d, route, pq, s, live_edit)
         facts = self._facts(claim, d, route, info, proposed)
@@ -614,6 +622,13 @@ class Runner:
         if d.verdict == "already_fixed":
             lines.append("A teacher already corrected this; the live question is fixed.")
         return "\n".join(x for x in lines if x)
+
+    @staticmethod
+    def _neutral_reply(lang) -> str:
+        """D-031: reply for an injection-flagged report sent to faculty. States and confirms no answer."""
+        if lang == "hinglish":
+            return "Thanks batane ke liye. Ek teacher is question ko check kar rahe hain."
+        return "Thanks for reporting this. A teacher is checking this question."
 
     @staticmethod
     def _fallback_reply(d, route, lang, info, proposed) -> str:
