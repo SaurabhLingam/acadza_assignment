@@ -676,3 +676,13 @@ session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
 <summary>Background command "Serve built console on port 4173" failed with exit code 127</summary>
 </task-notification>
 ```
+
+---
+
+### 2026-11-11T08:19:33+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+Yes, add D-026 and D-027 to decisions.md. Commit and push.
+```
