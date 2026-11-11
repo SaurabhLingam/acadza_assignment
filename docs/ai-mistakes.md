@@ -51,3 +51,9 @@ Times the AI (coding assistant or in-product LLM) got something wrong. Add entri
 - **What the AI did wrong:** the first version of the reply answer check ignored the value inside the option text and rejected correct replies like "the correct answer is 50 V" (key "(A) 50 V").
 - **How I caught it:** caught by the replay diff before the final run.
 - **What I changed:** `check_reply_claims` (`engine/tiers.py`) accepts the values in the keyed option's text as the decision's answer; test in `tests/test_reply_checks.py` ("50 V" passes and "70 V" fails against "(A) 50 V"). The buggy replays (`logs/runs/20261111T112608Z`, `20261111T112610Z`) are kept as evidence.
+
+## M-008: Claimed a flagged report's reply never confirms an answer
+- **Date:** 2026-11-11
+- **What the AI did wrong:** Claude Code told me a flagged report's reply never confirms an answer.
+- **How I caught it:** H08's fallback reply did state the answer (D).
+- **What I changed:** Led to D-031.

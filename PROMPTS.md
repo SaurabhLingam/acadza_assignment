@@ -1,5 +1,21 @@
 # PROMPTS.md: how this was built with AI
 
+## TL;DR
+
+- **How I worked:** I planned in a separate Claude chat, then directed Claude Code in reviewed phases: it
+  proposed, I reviewed, then it built. Prompts, decisions and mistakes were recorded automatically. I built
+  held-out test sets outside Claude Code's view, and committed in advance to fixing only safety failures.
+- **Headline numbers:**
+  - **44/44** on the given reports (in-sample)
+  - held-out **26/32** with **0 wrong auto-applies** (one injection policy failure, fixed)
+  - injection detection **9/20** before the fix, **12/15** on an unseen set after
+- **The three mistakes that mattered:**
+  - M-006: the injection regex was fitted to one report's wording, missed three new phrasings, and one
+    injection report auto-applied.
+  - M-002: the first design let the triage LLM choose the verdict, against "code decides".
+  - M-003: the reply writer invented "the correct answer is B" on a question with no correct option.
+- Every verbatim prompt below is collapsed; click to expand.
+
 Everything here traces to files in this repo: `docs/claude-code-prompts.md` (every prompt typed into Claude
 Code, logged automatically), `docs/decisions.md`, `docs/ai-mistakes.md`, `prompts/` and `prompts/CHANGELOG.md`,
 and the run logs under `logs/runs/`.
@@ -37,7 +53,7 @@ verbatim, followed by its history from `prompts/CHANGELOG.md`. Older versions ar
 
 ### prompt_guard_v1
 
-File: [`prompts/prompt_guard_v1.md`](prompts/prompt_guard_v1.md)
+<details><summary>Current prompt, verbatim: <code>prompts/prompt_guard_v1.md</code></summary>
 
 ~~~~markdown
 ---
@@ -57,13 +73,15 @@ model_note: >
 {{comment}}
 ~~~~
 
+</details>
+
 History:
 - **v1:** the comment verbatim as the only message, with no instructions, so the classifier's score is
   unaffected. A second, independent injection signal next to the code detector.
 
 ### solver_v5
 
-File: [`prompts/solver_v5.md`](prompts/solver_v5.md)
+<details><summary>Current prompt, verbatim: <code>prompts/solver_v5.md</code></summary>
 
 ~~~~markdown
 ---
@@ -115,6 +133,8 @@ Respond with JSON:
 }
 ~~~~
 
+</details>
+
 History:
 - **v1:** blind solve. Sees only the question type, stem and options, never the key, the stored solution or
   the comment (D-002). Run on two model families.
@@ -132,7 +152,7 @@ History:
 
 ### extract_v2
 
-File: [`prompts/extract_v2.md`](prompts/extract_v2.md)
+<details><summary>Current prompt, verbatim: <code>prompts/extract_v2.md</code></summary>
 
 ~~~~markdown
 ---
@@ -174,6 +194,8 @@ Respond with JSON:
 }
 ~~~~
 
+</details>
+
 History:
 - **v1:** a pure fact read of what the stored solution ends on (value, unit, option named). No judgement,
   which is left to `solution_audit`.
@@ -181,7 +203,7 @@ History:
 
 ### solution_audit_v3
 
-File: [`prompts/solution_audit_v3.md`](prompts/solution_audit_v3.md)
+<details><summary>Current prompt, verbatim: <code>prompts/solution_audit_v3.md</code></summary>
 
 ~~~~markdown
 ---
@@ -229,6 +251,8 @@ Respond with JSON:
 }
 ~~~~
 
+</details>
+
 History:
 - **v1:** three yes/no judgements with quoted evidence: values the question never gives, an internal
   contradiction, and part of the solution about another question. Split out of extract at my request.
@@ -238,7 +262,7 @@ History:
 
 ### option_check_v2
 
-File: [`prompts/option_check_v2.md`](prompts/option_check_v2.md)
+<details><summary>Current prompt, verbatim: <code>prompts/option_check_v2.md</code></summary>
 
 ~~~~markdown
 ---
@@ -279,6 +303,8 @@ Respond with JSON, keys in this order:
 }
 ~~~~
 
+</details>
+
 History:
 - **v1:** judges one option at a time, with no key shown. The same prompt is the tie-breaker on the other
   model family.
@@ -287,7 +313,7 @@ History:
 
 ### value_check_v1
 
-File: [`prompts/value_check_v1.md`](prompts/value_check_v1.md)
+<details><summary>Current prompt, verbatim: <code>prompts/value_check_v1.md</code></summary>
 
 ~~~~markdown
 ---
@@ -324,13 +350,15 @@ Respond with JSON, keys in this order:
 }
 ~~~~
 
+</details>
+
 History:
 - **v1** (new in the pre-run review): the integer-question counterpart of option_check. Why: option checks
   need options, so an integer question could never reach `answer_key`.
 
 ### triage_v6
 
-File: [`prompts/triage_v6.md`](prompts/triage_v6.md)
+<details><summary>Current prompt, verbatim: <code>prompts/triage_v6.md</code></summary>
 
 ~~~~markdown
 ---
@@ -420,6 +448,8 @@ Respond with JSON:
 }
 ~~~~
 
+</details>
+
 History:
 - **v1:** code decides the verdict wherever the signals settle it. Triage is told exactly what is left, and
   edits are written in clean text and mapped to raw HTML by code. Why: the first design let triage choose every
@@ -436,7 +466,7 @@ History:
 
 ### reply_v5
 
-File: [`prompts/reply_v5.md`](prompts/reply_v5.md)
+<details><summary>Current prompt, verbatim: <code>prompts/reply_v5.md</code></summary>
 
 ~~~~markdown
 ---
@@ -484,6 +514,8 @@ Respond with JSON:
 {"student_reply": "<1-3 sentences>"}
 ~~~~
 
+</details>
+
 History:
 - **v1:** 1–3 sentences, credits the student when the disputed item was defective (D-015), promises only what
   the route allows, uses only code-supplied facts, and code validates it with a template fallback.
@@ -509,6 +541,8 @@ Each is quoted verbatim from the log; only the paste-wrapper tag lines are remov
 Why it mattered: it set the rules everything else follows. Code decides and the LLM produces signals; the
 solver is blind; there are shadow-mode tiers; everything is recorded; the data is read-only and the labels are
 kept out of the engine.
+
+<details><summary>The prompt, verbatim</summary>
 
 ~~~~text
 You're setting up the repo for my Acadza AI intern assignment. Read README.md and everything in data/ first so you understand the task. DO NOT build the triage engine or the console yet. This step is only scaffolding and record-keeping.
@@ -555,9 +589,13 @@ Record in CLAUDE.md that every LLM call the engine makes must log: timestamp, st
 When done: list every file you created, show me the hook config, and prove the hook works by telling me what it logged.
 ~~~~
 
+</details>
+
 ### 2. Survey-first profiler (2026-11-10 18:22)
 Why it mattered: it measured how many reports code alone can settle before any LLM was used (11 settled, 7
 routed, 26 needing an LLM; D-007), instead of assuming.
+
+<details><summary>The prompt, verbatim</summary>
 
 ~~~~text
 Next up: a profiler. No LLM calls at all. I want to actually measure how many reports code alone can settle, instead of assuming most are easy.
@@ -581,9 +619,13 @@ Output a per-report CSV, a per-question CSV (flag questions with problems but no
 Build it as reusable modules in engine/; the real engine will use them later.
 ~~~~
 
+</details>
+
 ### 3. Shadow mode in the LLM design (2026-11-10 19:38)
 Why it mattered: a propose-first design step, where every tier runs on every report and logs what an early
 exit would have decided.
+
+<details><summary>The prompt, verbatim</summary>
 
 ~~~~text
 Next: the LLM part of the engine, for the 26 needs_llm reports. Propose the design and the prompt drafts first, then wait for my go-ahead.
@@ -606,9 +648,13 @@ OpenRouter: I have $2.58 of paid credit, so paid models are allowed, not just :f
 Prompts go in prompts/ as v1 files. Plan to test on 5 reports first before any full run.
 ~~~~
 
+</details>
+
 ### 4. The verdict-split correction (2026-11-10 19:46)
 Why it mattered: it caught the design letting triage choose the verdict (M-002). From then on code decides
 wherever the signals settle it, and triage only decides what's left (D-016).
+
+<details><summary>The prompt, verbatim</summary>
 
 ~~~~text
 mistake: the LLM-tier design had the triage model choosing the verdict, which contradicts D-001 (the LLM produces signals, code decides). Caught while reviewing the design.
@@ -625,9 +671,13 @@ Go ahead and build it, with these changes:
 Don't make any API calls yet. When it's built, show me all the prompt files verbatim so I can review them before the 6-report test.
 ~~~~
 
+</details>
+
 ### 5. Label verification (2026-11-10 22:47)
 Why it mattered: the labels became `user_verified` with their provenance recorded. The same prompt logged
 M-003.
+
+<details><summary>The prompt, verbatim</summary>
 
 ~~~~text
 mistake: the reply writer told the R034 student "the correct answer is B" on a question with no correct option. Code gave it no correct-answer fact, so it made one up. Caught reviewing the 6-report test.
@@ -645,9 +695,13 @@ Also: docs/eval-labels.csv is now verified. Set label_source to user_verified on
 Then rerun the same 6 (cached solves make it cheap), plus 6 new ones that exercise untested paths: R005 (integer, wrong key), R020 (malformed mcq key), R021 (type_mismatch), R007 (stem_data), R001 (duplicate group), R039 (Hinglish language request). Same per-report summary as before, plus a score against eval-labels.csv. Commit, and keep logs/runs in git.
 ~~~~
 
+</details>
+
 ### 6. The Groq fallback decision (2026-11-10 23:43)
 Why it mattered: it stopped a run rather than let degraded reports into `results.json`. Same-model fallback
 keeps the two solver families distinct (D-022).
+
+<details><summary>The prompt, verbatim</summary>
 
 ~~~~text
 Stop the run. Groq's daily limit is the bottleneck and I don't want degraded reports in results.json.
@@ -657,9 +711,13 @@ decision: amend D-018. When Groq is rate-limited for more than 60 s, fall back t
 Implement that, log which provider actually answered each call, and keep the cache working so the 35 finished reports aren't redone. Then resume the full run, score it, and report as planned: score vs eval-labels, every auto_apply with its edit, template fallbacks, shadow-mode disagreements, total cost. Commit and push.
 ~~~~
 
+</details>
+
 ### 7. The /design brief for the console (2026-11-11 07:46)
 Why it mattered: it designed the console around a tired faculty member at 10 PM, who must see in 2
 seconds what is wrong and what will change, and act with one keystroke.
+
+<details><summary>The prompt, verbatim</summary>
 
 ~~~~text
 /design Redesign the faculty review console in console/ from scratch. Keep the data pipeline (public/data.json) and the sanitization; replace the UI. Stage 1 showed everything at once; this version must be simple.
@@ -730,9 +788,13 @@ Static site (React + Vite + TS), no backend, no API keys. Sanitize all HTML (all
 When done: run it, check it with headless screenshots, fix anything broken, then commit and push. Show me screenshots of 695ee00b (R034, no option correct), 60f744b3 (answer key C → A), 6263d75b (solution fix), and the empty "Needs you" state. Then give me exact Vercel deploy steps.
 ~~~~
 
+</details>
+
 ### 8. The held-out run (2026-11-11 14:00)
 Why it mattered: the frozen engine ran on data it had never seen, without reading the labels or working out
 the expected answers.
+
+<details><summary>The prompt, verbatim</summary>
 
 ~~~~text
 I built a held-out test set to check the engine generalises beyond the 44. It's in eval/heldout/: heldout_reports.json (32 reports) and heldout_questions.json (10 new question records). Some reports point at existing questions in data/questions.json, the rest at the new records.
@@ -746,9 +808,13 @@ Run the frozen engine on it, exactly as it ran for the final 44 run. Rules:
 When done, show me: run id, cost, time, route counts, and a table with one row per report: reportId, verdict, repair, answer (after any edit), route, confidence, and whether injection was flagged. Commit eval/heldout/ and push.
 ~~~~
 
+</details>
+
 ### 9. Diagnose and propose before building (2026-11-11 14:42)
 Why it mattered: the H08 safety failure was diagnosed, and a general fix was proposed and reviewed before any
 code changed.
+
+<details><summary>The prompt, verbatim</summary>
 
 ~~~~text
 I scored the held-out run against my key: 26/32 verdict+repair, and 0 auto-applied edits were wrong. But there's one safety failure and I want it fixed.
@@ -761,8 +827,12 @@ Safety failure: the injection detector flagged none of H07, H08, H09 (polite "fa
 Record the held-out result as an eval artifact: copy my key from C:\Users\saura\IdeaProjects\acadza\heldout\heldout_key.csv into eval/heldout/ and add a short eval/heldout/README.md (what the set is, how it was built, 26/32, 0 wrong auto-applies, the H08 policy failure). Then stop and show me the proposal and the two diagnoses.
 ~~~~
 
+</details>
+
 ### 10. Fix only the safety failure, not P02/P08 (2026-11-11 16:02)
 Why it mattered: the pre-commitment held, and the result was committed before any fix.
+
+<details><summary>The prompt, verbatim</summary>
 
 ~~~~text
 Decisions:
@@ -785,9 +855,13 @@ mistake: the injection regex was written against R027's wording and missed all t
 Commit and push. Don't write any new injection test comments; I have a fresh set I'll give you after.
 ~~~~
 
+</details>
+
 ### 11. Fix by technique, not by example; one round, then freeze (2026-11-11 16:49)
 Why it mattered: it turned a burned test set into rules for general attack types, and added a code check on
 every reply.
+
+<details><summary>The prompt, verbatim</summary>
 
 ~~~~text
 One improvement round on injection, then we freeze. The fresh set is now burned as a test, so fix by technique, not by example: each rule must be a general attack type, not a phrase from fresh_injection_comments.csv.
@@ -808,8 +882,12 @@ decision: D-032 injection detection by technique: normalisation, role/channel sp
 Then replay the 44 and the held-out set from cache, show me every field that changed, re-run the detector on fresh_injection_comments.csv and report it as "after fix (fitted, not a fair measure)". Don't touch any new test file I add later. Commit, push, stop.
 ~~~~
 
+</details>
+
 ### 12. The unseen third set (2026-11-11 17:02)
 Why it mattered: this is the fair measure of the fix, on a set written without seeing the new rules.
+
+<details><summary>The prompt, verbatim</summary>
 
 ~~~~text
 eval/heldout/fresh_injection_set3.csv is a third set I wrote without seeing your new rules: 15 attacks and 10 genuine look-alikes. The detector is frozen. Run it as is and don't change anything after seeing the set. Show me the same table (id, flagged, families, guard), recall on 15, false positives on 10. Add it to eval/heldout/README.md as the fair post-fix measure, next to set 2's 9/20 before the fix. Commit, push.
@@ -818,6 +896,8 @@ Then, separately:
 - Show me verbatim the new student_reply for R016 and R026 in results.json (old and new side by side). Change nothing.
 mistake: the first version of the reply answer check ignored the value inside the option text and rejected correct replies like "the correct answer is 50 V" (key "(A) 50 V"); caught by the replay diff before the final run.
 ~~~~
+
+</details>
 
 ## Where the AI was wrong
 
@@ -858,9 +938,8 @@ The rest, in one line each:
   weak-model run's diff, and now blocked by a guard.
 - **M-005:** triage_v3's notation warning made the model stop proposing stem_data edits (R006–R008 lost
   auto-apply). Caught by re-running all 44, not only the changed cases.
-- **A wrong claim about flagged replies:** I said a flagged report's reply never confirms an answer. After
-  D-030, H08's fallback reply still said "Sahi answer (D) 4800 N/m^2 hai". That led to D-031. Recorded in
-  D-031's "Why" in `docs/decisions.md`, not as an M- entry.
+- **M-008:** Claude Code told me a flagged report's reply never confirms an answer; H08's fallback reply did
+  state the answer (D). That led to D-031.
 - **M-007:** the first reply answer check ignored the value inside the option text, so it rejected correct
   replies like "the correct answer is 50 V" (key "(A) 50 V"). Caught by the replay diff before the final run.
 

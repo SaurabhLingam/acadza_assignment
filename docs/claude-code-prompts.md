@@ -1144,3 +1144,25 @@ Commit and push. Tell me the word counts and anything you weren't sure about.
 </pasted_content id="0f56">
 
 ```
+
+---
+
+### 2026-11-11T17:21:03+05:30
+
+session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
+
+```text
+
+
+<pasted_content id="0f56">
+Good catches, all four accepted: keep solution_missing as the engine does it, keep your bonus wording, re-grading stays "not built".
+
+mistake: Claude Code told me a flagged report's reply never confirms an answer; H08's fallback reply did state the answer (D). Led to D-031.
+
+PROMPTS.md is too long to read. Keep everything, but:
+- Add a TL;DR at the top (8–10 lines): how I worked, the headline numbers (44/44 in-sample, held-out 26/32 with 0 wrong auto-applies, injection 9/20 → 12/15 on an unseen set), and the 3 mistakes in one line each.
+- Wrap every verbatim prompt and log entry in <details><summary>…</summary> so the page reads as prose by default.
+Tell me the visible word count after. Commit, push.
+</pasted_content id="0f56">
+
+```
