@@ -1,59 +1,175 @@
 [
   {
-    "questionId": "66fe9dbe22132e5a70a3e579",
-    "repair": "spelling",
-    "check": "spelling_suspect",
-    "strength": "signal",
+    "questionId": "6062ec84518e9535e120c422",
+    "repair": "notation",
+    "check": "manual_review",
+    "strength": "manual",
     "field": "solution",
-    "detail": "'inhibit' looks like a misspelling of 'inhibin' (one edit).",
-    "evidence_text": "inhibit",
-    "evidence_raw": " inhibit ",
+    "detail": "Unit of α stored as '/AC' (a literal A in place of the degree sign); should be /°C.",
+    "evidence_text": "1.9×10^−5/AC",
+    "evidence_raw": "<mi mathvariant=\"normal\">A</mi><mi mathvariant=\"normal\">C</mi>",
     "evidence_raw_unique": true,
-    "reports_on_question": [
-      "R035"
-    ],
-    "proposed_edit": null,
-    "edit_how": "code suggests a nearby word, but both may be real words; needs a confirm",
+    "evidence_raw_count": 1,
+    "proposed_edit": {
+      "field": "solution",
+      "find": "<mi mathvariant=\"normal\">A</mi><mi mathvariant=\"normal\">C</mi>",
+      "replace": "<mi mathvariant=\"normal\">&#x000B0;</mi><mi mathvariant=\"normal\">C</mi>"
+    },
+    "edit_how": "manual review",
     "could_auto_apply": false,
-    "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply",
-    "occurrences": [
-      {
-        "field": "solution",
-        "text": "inhibit",
-        "raw": " inhibit ",
-        "raw_unique": true
-      },
-      {
-        "field": "question",
-        "text": "Inhibin",
-        "raw": "Inhibin",
-        "raw_unique": true
-      },
-      {
-        "field": "solution",
-        "text": "Inhibin",
-        "raw": "Inhibin",
-        "raw_unique": true
-      }
-    ]
+    "why": "notation is high-stakes (D-023/D-024): needs two independent sources",
+    "reports_on_question": [
+      "R027"
+    ],
+    "source": "manual_review",
+    "found_by": "user"
   },
   {
-    "questionId": "6956d79788d7701e5617bc29",
+    "questionId": "6062ec84518e9535e120c422",
+    "repair": "notation",
+    "check": "manual_review",
+    "strength": "manual",
+    "field": "solution",
+    "detail": "Unit of γ stored as '/CC' (a literal C in place of the degree sign); should be /°C.",
+    "evidence_text": "5.7×10^−5/CC",
+    "evidence_raw": "<mi mathvariant=\"normal\">C</mi><mi mathvariant=\"normal\">C</mi>",
+    "evidence_raw_unique": true,
+    "evidence_raw_count": 1,
+    "proposed_edit": {
+      "field": "solution",
+      "find": "<mi mathvariant=\"normal\">C</mi><mi mathvariant=\"normal\">C</mi>",
+      "replace": "<mi mathvariant=\"normal\">&#x000B0;</mi><mi mathvariant=\"normal\">C</mi>"
+    },
+    "edit_how": "manual review",
+    "could_auto_apply": false,
+    "why": "notation is high-stakes (D-023/D-024): needs two independent sources",
+    "reports_on_question": [
+      "R027"
+    ],
+    "source": "manual_review",
+    "found_by": "user"
+  },
+  {
+    "questionId": "6062ec84518e9535e120c422",
+    "repair": "notation",
+    "check": "manual_review",
+    "strength": "manual",
+    "field": "solution",
+    "detail": "'γ = 3a' should be 'γ = 3α' (Latin a in place of alpha; the line before defines α).",
+    "evidence_text": "γ = 3a",
+    "evidence_raw": "<mn>3</mn><mi>a</mi>",
+    "evidence_raw_unique": true,
+    "evidence_raw_count": 1,
+    "proposed_edit": {
+      "field": "solution",
+      "find": "<mn>3</mn><mi>a</mi>",
+      "replace": "<mn>3</mn><mi>&#x003B1;</mi>"
+    },
+    "edit_how": "manual review",
+    "could_auto_apply": false,
+    "why": "notation is high-stakes (D-023/D-024): needs two independent sources",
+    "reports_on_question": [
+      "R027"
+    ],
+    "source": "manual_review",
+    "found_by": "claude"
+  },
+  {
+    "questionId": "612151a6a34397610a9a2e58",
     "repair": "markup_leak",
-    "check": "alignment_marker_leak",
+    "check": "latex_in_text",
     "strength": "definite",
     "field": "solution",
-    "detail": "2 lone '&' token(s) in solution MathML (LaTeX alignment markers); a browser shows them as a visible '&'.",
-    "evidence_text": "&",
-    "evidence_raw": "w><mi>&amp;</mi><m",
+    "detail": "Raw LaTeX visible in solution: \\AA",
+    "evidence_text": "\\AA",
+    "evidence_raw": "\\AA",
     "evidence_raw_unique": true,
     "reports_on_question": [
-      "R015"
+      "R018",
+      "R019"
     ],
-    "proposed_edit": null,
-    "edit_how": "markup not convertible by code",
+    "source": "code_check",
+    "proposed_edit": {
+      "field": "solution",
+      "find": "\\AA",
+      "replace": "Å"
+    },
+    "edit_how": "code: LaTeX to text",
+    "could_auto_apply": true,
+    "why": "definite, low-risk (D-023), code-built edit passes the guards"
+  },
+  {
+    "questionId": "617fa18efd53ff1629ed890f",
+    "repair": "spelling",
+    "check": "run_together_words",
+    "strength": "signal",
+    "field": "question",
+    "detail": "'ofleaf' looks like two words run together: 'of leaf'.",
+    "evidence_text": "ofleaf",
+    "evidence_raw": "of<span style=\"color:#000000\">leaf",
+    "evidence_raw_unique": true,
+    "reports_on_question": [
+      "R013"
+    ],
+    "source": "code_check",
+    "proposed_edit": {
+      "field": "question",
+      "find": "of<span style=\"color:#000000\">leaf",
+      "replace": "of <span style=\"color:#000000\">leaf"
+    },
+    "edit_how": "code: split run-together words",
     "could_auto_apply": false,
-    "why": "definite and low-risk, but code builds no edit for this check yet"
+    "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply"
+  },
+  {
+    "questionId": "61ee6c9d90a1a968a168686b",
+    "repair": "spelling",
+    "check": "manual_review",
+    "strength": "manual",
+    "field": "solution",
+    "detail": "'prominant' should be 'prominent' ('Rugae are prominant folds found in empty stomach'). R022's edit fixed only 'plexux' in the question.",
+    "evidence_text": "prominant",
+    "evidence_raw": "prominant",
+    "evidence_raw_unique": true,
+    "evidence_raw_count": 1,
+    "proposed_edit": {
+      "field": "solution",
+      "find": "prominant",
+      "replace": "prominent"
+    },
+    "edit_how": "manual review",
+    "could_auto_apply": false,
+    "why": "low-risk, but no code check supports it (D-023); human-found, so apply as a faculty-approved edit",
+    "reports_on_question": [
+      "R022"
+    ],
+    "source": "manual_review",
+    "found_by": "user"
+  },
+  {
+    "questionId": "61ee6c9d90a1a968a168686b",
+    "repair": "spelling",
+    "check": "manual_review",
+    "strength": "manual",
+    "field": "solution",
+    "detail": "'Maceus membrane of small intestine' should be 'Mucous membrane'.",
+    "evidence_text": "Maceus",
+    "evidence_raw": "Maceus",
+    "evidence_raw_unique": true,
+    "evidence_raw_count": 1,
+    "proposed_edit": {
+      "field": "solution",
+      "find": "Maceus",
+      "replace": "Mucous"
+    },
+    "edit_how": "manual review",
+    "could_auto_apply": false,
+    "why": "low-risk, but no code check supports it (D-023); human-found, so apply as a faculty-approved edit",
+    "reports_on_question": [
+      "R022"
+    ],
+    "source": "manual_review",
+    "found_by": "user"
   },
   {
     "questionId": "622df25ab70e4b50e44ff837",
@@ -68,6 +184,7 @@
     "reports_on_question": [
       "R025"
     ],
+    "source": "code_check",
     "proposed_edit": null,
     "edit_how": "two spellings of one word appear the same number of times; code cannot tell which is the misspelling",
     "could_auto_apply": false,
@@ -88,27 +205,24 @@
     ]
   },
   {
-    "questionId": "612151a6a34397610a9a2e58",
+    "questionId": "622f08d7b70e4b50e4500a1b",
     "repair": "markup_leak",
-    "check": "latex_in_text",
+    "check": "alignment_marker_leak",
     "strength": "definite",
     "field": "solution",
-    "detail": "Raw LaTeX visible in solution: \\AA",
-    "evidence_text": "\\AA",
-    "evidence_raw": "\\AA",
+    "detail": "2 lone '&' token(s) in solution MathML (LaTeX alignment markers); a browser shows them as a visible '&'.",
+    "evidence_text": "&",
+    "evidence_raw": "b><mi>&</mi><m",
     "evidence_raw_unique": true,
     "reports_on_question": [
-      "R018",
-      "R019"
+      "R010",
+      "R009"
     ],
-    "proposed_edit": {
-      "field": "solution",
-      "find": "\\AA",
-      "replace": "Å"
-    },
-    "edit_how": "code: LaTeX to text",
-    "could_auto_apply": true,
-    "why": "definite, low-risk (D-023), code-built edit passes the guards"
+    "source": "code_check",
+    "proposed_edit": null,
+    "edit_how": "markup not convertible by code",
+    "could_auto_apply": false,
+    "why": "definite and low-risk, but code builds no edit for this check yet"
   },
   {
     "questionId": "6264197209f4fd65f58f5707",
@@ -123,6 +237,7 @@
     "reports_on_question": [
       "R040"
     ],
+    "source": "code_check",
     "proposed_edit": {
       "field": "solution",
       "find": "ofvitamin",
@@ -145,6 +260,7 @@
     "reports_on_question": [
       "R040"
     ],
+    "source": "code_check",
     "proposed_edit": null,
     "edit_how": "two spellings of one word appear the same number of times; code cannot tell which is the misspelling",
     "could_auto_apply": false,
@@ -165,58 +281,104 @@
     ]
   },
   {
-    "questionId": "617fa18efd53ff1629ed890f",
+    "questionId": "6264197209f4fd65f58f5707",
     "repair": "spelling",
-    "check": "run_together_words",
-    "strength": "signal",
-    "field": "question",
-    "detail": "'ofleaf' looks like two words run together: 'of leaf'.",
-    "evidence_text": "ofleaf",
-    "evidence_raw": "of<span style=\"color:#000000\">leaf",
+    "check": "manual_review",
+    "strength": "manual",
+    "field": "solution",
+    "detail": "Run-together words: 'producebeta-carotene' should be 'produce beta-carotene'. The run-together check misses it because of the hyphen.",
+    "evidence_text": "producebeta-carotene",
+    "evidence_raw": "producebeta",
     "evidence_raw_unique": true,
-    "reports_on_question": [
-      "R013"
-    ],
+    "evidence_raw_count": 1,
     "proposed_edit": {
-      "field": "question",
-      "find": "of<span style=\"color:#000000\">leaf",
-      "replace": "of <span style=\"color:#000000\">leaf"
+      "field": "solution",
+      "find": "producebeta",
+      "replace": "produce beta"
     },
-    "edit_how": "code: split run-together words",
+    "edit_how": "manual review",
     "could_auto_apply": false,
-    "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply"
+    "why": "low-risk, but no code check supports it (D-023); human-found, so apply as a faculty-approved edit",
+    "reports_on_question": [
+      "R040"
+    ],
+    "source": "manual_review",
+    "found_by": "user"
   },
   {
-    "questionId": "617fa18efd53ff1629ed890f",
+    "questionId": "6264197209f4fd65f58f5707",
     "repair": "spelling",
-    "check": "spelling_suspect",
-    "strength": "signal",
+    "check": "manual_review",
+    "strength": "manual",
     "field": "solution",
-    "detail": "'abaxial' and 'adaxial' differ by one edit; one is likely misspelled.",
-    "evidence_text": "abaxial",
-    "evidence_raw": "abaxial",
+    "detail": "Run-together words: 'helpprevent vitamin A deficiency' should be 'help prevent'. Same sentence group as 'producebeta-carotene'; 'help' is not in the check's function-word list.",
+    "evidence_text": "helpprevent",
+    "evidence_raw": "helpprevent",
     "evidence_raw_unique": true,
-    "reports_on_question": [
-      "R013"
-    ],
-    "proposed_edit": null,
-    "edit_how": "two spellings of one word appear the same number of times; code cannot tell which is the misspelling",
+    "evidence_raw_count": 1,
+    "proposed_edit": {
+      "field": "solution",
+      "find": "helpprevent",
+      "replace": "help prevent"
+    },
+    "edit_how": "manual review",
     "could_auto_apply": false,
-    "why": "signal only: low-risk, but needs one confirm (model or faculty) before it can auto-apply",
-    "occurrences": [
-      {
-        "field": "solution",
-        "text": "abaxial",
-        "raw": "abaxial",
-        "raw_unique": true
-      },
-      {
-        "field": "solution",
-        "text": "adaxial",
-        "raw": "adaxial",
-        "raw_unique": true
-      }
-    ]
+    "why": "low-risk, but no code check supports it (D-023); human-found, so apply as a faculty-approved edit",
+    "reports_on_question": [
+      "R040"
+    ],
+    "source": "manual_review",
+    "found_by": "claude"
+  },
+  {
+    "questionId": "66fe9dbe22132e5a70a3e579",
+    "repair": "solution_fix",
+    "check": "manual_review",
+    "strength": "manual",
+    "field": "solution",
+    "detail": "Insulin and glucagon are antagonistic (insulin lowers blood glucose, glucagon raises it). The question asks which pair is NOT antagonistic and the key is D (Relaxin - Inhibin), which needs B (Insulin - Glucagon) to be antagonistic; the solution's 'synergistically' contradicts its own key.",
+    "evidence_text": "Insulin and glucagon work synergistically",
+    "evidence_raw": "Insulin and glucagon work synergistically",
+    "evidence_raw_unique": true,
+    "evidence_raw_count": 1,
+    "proposed_edit": {
+      "field": "solution",
+      "find": "Insulin and glucagon work synergistically",
+      "replace": "Insulin and glucagon work antagonistically"
+    },
+    "edit_how": "manual review",
+    "could_auto_apply": false,
+    "why": "solution_fix is high-stakes (D-023/D-024): needs two independent sources",
+    "reports_on_question": [
+      "R035"
+    ],
+    "source": "manual_review",
+    "found_by": "user"
+  },
+  {
+    "questionId": "66fe9dbe22132e5a70a3e579",
+    "repair": "notation",
+    "check": "manual_review",
+    "strength": "manual",
+    "field": "question",
+    "detail": "Option C lists a hormone pair without its separator; A, B and D all write 'X - Y' (A uses &ndash;). Reads as one hormone name.",
+    "evidence_text": "(C) Aldosterone Atrial Natriuretic Factor",
+    "evidence_raw": "(C) Aldosterone Atrial Natriuretic Factor",
+    "evidence_raw_unique": true,
+    "evidence_raw_count": 1,
+    "proposed_edit": {
+      "field": "question",
+      "find": "(C) Aldosterone Atrial Natriuretic Factor",
+      "replace": "(C) Aldosterone - Atrial Natriuretic Factor"
+    },
+    "edit_how": "manual review",
+    "could_auto_apply": false,
+    "why": "notation is high-stakes (D-023/D-024): needs two independent sources",
+    "reports_on_question": [
+      "R035"
+    ],
+    "source": "manual_review",
+    "found_by": "user"
   },
   {
     "questionId": "68c801bc1b1dbc16dc93bf2b",
@@ -231,28 +393,117 @@
     "reports_on_question": [
       "R039"
     ],
+    "source": "code_check",
     "proposed_edit": null,
     "edit_how": "markup not convertible by code",
     "could_auto_apply": false,
     "why": "definite and low-risk, but code builds no edit for this check yet"
   },
   {
-    "questionId": "622f08d7b70e4b50e4500a1b",
+    "questionId": "68dea657387eea3d0d95f54a",
+    "repair": "notation",
+    "check": "manual_review",
+    "strength": "manual",
+    "field": "solution",
+    "detail": "Garbled subscript: 'P_eq = 1/0.1 = 10 D = 2 P_eqcu' should be P_each (power of each lens).",
+    "evidence_text": "P_eqcu",
+    "evidence_raw": "<mtext> eqcu </mtext>",
+    "evidence_raw_unique": true,
+    "evidence_raw_count": 1,
+    "proposed_edit": {
+      "field": "solution",
+      "find": "<mtext> eqcu </mtext>",
+      "replace": "<mtext> each </mtext>"
+    },
+    "edit_how": "manual review",
+    "could_auto_apply": false,
+    "why": "notation is high-stakes (D-023/D-024): needs two independent sources",
+    "reports_on_question": [],
+    "source": "manual_review",
+    "found_by": "user"
+  },
+  {
+    "questionId": "68dea657387eea3d0d95f54a",
+    "repair": "notation",
+    "check": "manual_review",
+    "strength": "manual",
+    "field": "solution",
+    "detail": "Garbled subscript: 'Optical power of each lens is P_eqch = 5 D' should be P_each.",
+    "evidence_text": "P_eqch",
+    "evidence_raw": "<mtext> eqch </mtext>",
+    "evidence_raw_unique": true,
+    "evidence_raw_count": 1,
+    "proposed_edit": {
+      "field": "solution",
+      "find": "<mtext> eqch </mtext>",
+      "replace": "<mtext> each </mtext>"
+    },
+    "edit_how": "manual review",
+    "could_auto_apply": false,
+    "why": "notation is high-stakes (D-023/D-024): needs two independent sources",
+    "reports_on_question": [],
+    "source": "manual_review",
+    "found_by": "user"
+  },
+  {
+    "questionId": "68f21caf941cda588bc04365",
+    "repair": "wrong_chapter",
+    "check": "manual_review",
+    "strength": "manual",
+    "field": "chapter",
+    "detail": "Radioactive decay question (mean life of nuclei X from 48e23 to 6e23 in 3 min) filed under chapter 'Mathematics in physics', concept 'Basic functions used in physics', subConcept 'Linear function'. Belongs with nuclear physics / radioactivity.",
+    "evidence_text": "Mathematics in physics",
+    "evidence_raw": "Mathematics in physics",
+    "evidence_raw_unique": true,
+    "evidence_raw_count": 1,
+    "proposed_edit": null,
+    "edit_how": "no single edit",
+    "could_auto_apply": false,
+    "why": "wrong_chapter is faculty-only in the taxonomy",
+    "reports_on_question": [
+      "R021"
+    ],
+    "source": "manual_review",
+    "found_by": "user"
+  },
+  {
+    "questionId": "6956d79788d7701e5617bc29",
     "repair": "markup_leak",
     "check": "alignment_marker_leak",
     "strength": "definite",
     "field": "solution",
     "detail": "2 lone '&' token(s) in solution MathML (LaTeX alignment markers); a browser shows them as a visible '&'.",
     "evidence_text": "&",
-    "evidence_raw": "b><mi>&</mi><m",
+    "evidence_raw": "w><mi>&amp;</mi><m",
     "evidence_raw_unique": true,
     "reports_on_question": [
-      "R010",
-      "R009"
+      "R015"
     ],
+    "source": "code_check",
     "proposed_edit": null,
     "edit_how": "markup not convertible by code",
     "could_auto_apply": false,
     "why": "definite and low-risk, but code builds no edit for this check yet"
+  },
+  {
+    "questionId": "6956d7e988d7701e5617bd3e",
+    "repair": "notation",
+    "check": "manual_review",
+    "strength": "manual",
+    "field": "question",
+    "detail": "All four options put the unit inside the square root (<mi> m </mi> inside <msqrt>), so they render as k√(2 m) instead of k√2 m. The solution's last line writes it correctly (8√2 m). The same markup occurs once per option (4 times), so one find/replace edit cannot target it.",
+    "evidence_text": "2√(2 m), 4√(2 m), 6√(2 m), 8√(2 m)",
+    "evidence_raw": "<msqrt><mrow><mn> 2 </mn><mrow><mtext>&#x000A0;</mtext><mi mathvariant=\"normal\"> m </mi></mrow></mrow></msqrt>",
+    "evidence_raw_unique": false,
+    "evidence_raw_count": 4,
+    "proposed_edit": null,
+    "edit_how": "no single edit",
+    "could_auto_apply": false,
+    "why": "notation is high-stakes (D-023/D-024): needs two independent sources",
+    "reports_on_question": [
+      "R030"
+    ],
+    "source": "manual_review",
+    "found_by": "user"
   }
 ]

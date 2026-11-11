@@ -1,0 +1,147 @@
+{
+  "_about": "Human review of bonus_findings.json, merged by `python -m engine.bonus`. `add`: findings the code checks miss, each checked against the raw HTML in data/questions.json (evidence_raw must occur in the stored field, or the merge fails). `dismiss`: code findings judged false positives (matched by questionId + check + evidence_text). found_by: user (manual review) or claude (spotted while verifying the user's list).",
+  "add": [
+    {
+      "questionId": "68f21caf941cda588bc04365",
+      "repair": "wrong_chapter",
+      "field": "chapter",
+      "evidence_text": "Mathematics in physics",
+      "evidence_raw": "Mathematics in physics",
+      "detail": "Radioactive decay question (mean life of nuclei X from 48e23 to 6e23 in 3 min) filed under chapter 'Mathematics in physics', concept 'Basic functions used in physics', subConcept 'Linear function'. Belongs with nuclear physics / radioactivity.",
+      "found_by": "user"
+    },
+    {
+      "questionId": "66fe9dbe22132e5a70a3e579",
+      "repair": "solution_fix",
+      "field": "solution",
+      "evidence_text": "Insulin and glucagon work synergistically",
+      "evidence_raw": "Insulin and glucagon work synergistically",
+      "detail": "Insulin and glucagon are antagonistic (insulin lowers blood glucose, glucagon raises it). The question asks which pair is NOT antagonistic and the key is D (Relaxin - Inhibin), which needs B (Insulin - Glucagon) to be antagonistic; the solution's 'synergistically' contradicts its own key.",
+      "proposed_replace": "Insulin and glucagon work antagonistically",
+      "found_by": "user"
+    },
+    {
+      "questionId": "66fe9dbe22132e5a70a3e579",
+      "repair": "notation",
+      "field": "question",
+      "evidence_text": "(C) Aldosterone Atrial Natriuretic Factor",
+      "evidence_raw": "(C) Aldosterone Atrial Natriuretic Factor",
+      "detail": "Option C lists a hormone pair without its separator; A, B and D all write 'X - Y' (A uses &ndash;). Reads as one hormone name.",
+      "proposed_replace": "(C) Aldosterone - Atrial Natriuretic Factor",
+      "found_by": "user"
+    },
+    {
+      "questionId": "6956d7e988d7701e5617bd3e",
+      "repair": "notation",
+      "field": "question",
+      "evidence_text": "2√(2 m), 4√(2 m), 6√(2 m), 8√(2 m)",
+      "evidence_raw": "<msqrt><mrow><mn> 2 </mn><mrow><mtext>&#x000A0;</mtext><mi mathvariant=\"normal\"> m </mi></mrow></mrow></msqrt>",
+      "detail": "All four options put the unit inside the square root (<mi> m </mi> inside <msqrt>), so they render as k√(2 m) instead of k√2 m. The solution's last line writes it correctly (8√2 m). The same markup occurs once per option (4 times), so one find/replace edit cannot target it.",
+      "found_by": "user"
+    },
+    {
+      "questionId": "61ee6c9d90a1a968a168686b",
+      "repair": "spelling",
+      "field": "solution",
+      "evidence_text": "prominant",
+      "evidence_raw": "prominant",
+      "detail": "'prominant' should be 'prominent' ('Rugae are prominant folds found in empty stomach'). R022's edit fixed only 'plexux' in the question.",
+      "proposed_replace": "prominent",
+      "found_by": "user"
+    },
+    {
+      "questionId": "61ee6c9d90a1a968a168686b",
+      "repair": "spelling",
+      "field": "solution",
+      "evidence_text": "Maceus",
+      "evidence_raw": "Maceus",
+      "detail": "'Maceus membrane of small intestine' should be 'Mucous membrane'.",
+      "proposed_replace": "Mucous",
+      "found_by": "user"
+    },
+    {
+      "questionId": "68dea657387eea3d0d95f54a",
+      "repair": "notation",
+      "field": "solution",
+      "evidence_text": "P_eqcu",
+      "evidence_raw": "<mtext> eqcu </mtext>",
+      "detail": "Garbled subscript: 'P_eq = 1/0.1 = 10 D = 2 P_eqcu' should be P_each (power of each lens).",
+      "proposed_replace": "<mtext> each </mtext>",
+      "found_by": "user"
+    },
+    {
+      "questionId": "68dea657387eea3d0d95f54a",
+      "repair": "notation",
+      "field": "solution",
+      "evidence_text": "P_eqch",
+      "evidence_raw": "<mtext> eqch </mtext>",
+      "detail": "Garbled subscript: 'Optical power of each lens is P_eqch = 5 D' should be P_each.",
+      "proposed_replace": "<mtext> each </mtext>",
+      "found_by": "user"
+    },
+    {
+      "questionId": "6062ec84518e9535e120c422",
+      "repair": "notation",
+      "field": "solution",
+      "evidence_text": "1.9×10^−5/AC",
+      "evidence_raw": "<mi mathvariant=\"normal\">A</mi><mi mathvariant=\"normal\">C</mi>",
+      "detail": "Unit of α stored as '/AC' (a literal A in place of the degree sign); should be /°C.",
+      "proposed_replace": "<mi mathvariant=\"normal\">&#x000B0;</mi><mi mathvariant=\"normal\">C</mi>",
+      "found_by": "user"
+    },
+    {
+      "questionId": "6062ec84518e9535e120c422",
+      "repair": "notation",
+      "field": "solution",
+      "evidence_text": "5.7×10^−5/CC",
+      "evidence_raw": "<mi mathvariant=\"normal\">C</mi><mi mathvariant=\"normal\">C</mi>",
+      "detail": "Unit of γ stored as '/CC' (a literal C in place of the degree sign); should be /°C.",
+      "proposed_replace": "<mi mathvariant=\"normal\">&#x000B0;</mi><mi mathvariant=\"normal\">C</mi>",
+      "found_by": "user"
+    },
+    {
+      "questionId": "6062ec84518e9535e120c422",
+      "repair": "notation",
+      "field": "solution",
+      "evidence_text": "γ = 3a",
+      "evidence_raw": "<mn>3</mn><mi>a</mi>",
+      "detail": "'γ = 3a' should be 'γ = 3α' (Latin a in place of alpha; the line before defines α).",
+      "proposed_replace": "<mn>3</mn><mi>&#x003B1;</mi>",
+      "found_by": "claude"
+    },
+    {
+      "questionId": "6264197209f4fd65f58f5707",
+      "repair": "spelling",
+      "field": "solution",
+      "evidence_text": "producebeta-carotene",
+      "evidence_raw": "producebeta",
+      "detail": "Run-together words: 'producebeta-carotene' should be 'produce beta-carotene'. The run-together check misses it because of the hyphen.",
+      "proposed_replace": "produce beta",
+      "found_by": "user"
+    },
+    {
+      "questionId": "6264197209f4fd65f58f5707",
+      "repair": "spelling",
+      "field": "solution",
+      "evidence_text": "helpprevent",
+      "evidence_raw": "helpprevent",
+      "detail": "Run-together words: 'helpprevent vitamin A deficiency' should be 'help prevent'. Same sentence group as 'producebeta-carotene'; 'help' is not in the check's function-word list.",
+      "proposed_replace": "help prevent",
+      "found_by": "claude"
+    }
+  ],
+  "dismiss": [
+    {
+      "questionId": "66fe9dbe22132e5a70a3e579",
+      "check": "spelling_suspect",
+      "evidence_text": "inhibit",
+      "reason": "False positive: 'inhibit' (verb) and 'Inhibin' (hormone) are both real words, used correctly."
+    },
+    {
+      "questionId": "617fa18efd53ff1629ed890f",
+      "check": "spelling_suspect",
+      "evidence_text": "abaxial",
+      "reason": "False positive: 'abaxial' (lower leaf surface) and 'adaxial' (upper) are both real botany terms, used correctly."
+    }
+  ]
+}

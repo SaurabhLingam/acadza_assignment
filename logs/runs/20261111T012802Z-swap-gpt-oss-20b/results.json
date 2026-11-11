@@ -1,0 +1,560 @@
+[
+  {
+    "reportId": "R001",
+    "questionId": "60f744b3f1b9bc7cc7b4a949",
+    "verdict": "defect",
+    "repair": "answer_key",
+    "edit": {
+      "field": "answer",
+      "find": "C",
+      "replace": "A"
+    },
+    "route": "auto_apply",
+    "confidence": 0.97,
+    "evidence": "Key: (C) 130 V. gpt-oss-20b (blind solve): 50 V = (A). deepseek-v4-flash (blind solve): 50 V = (A). Stored solution (gpt-oss-20b) ends at 50 V = (A). Option checks: (A) correct [gpt-oss-20b]; (C) incorrect [gpt-oss-20b].",
+    "student_reply": "Thanks for spotting the mistake; the correct answer is (A) 50 V because V_L and V_C are 180° apart, so V_supply = sqrt(V_R^2 + (V_L - V_C)^2) = 50 V. Your answer (C) was not correct, but the key step is as above. The fix is live now."
+  },
+  {
+    "reportId": "R002",
+    "questionId": "60f744b3f1b9bc7cc7b4a949",
+    "verdict": "defect",
+    "repair": "answer_key",
+    "edit": {
+      "field": "answer",
+      "find": "C",
+      "replace": "A"
+    },
+    "route": "auto_apply",
+    "confidence": 0.97,
+    "evidence": "Key: (C) 130 V. gpt-oss-20b (blind solve): 50 V = (A). deepseek-v4-flash (blind solve): 50 V = (A). Stored solution (gpt-oss-20b) ends at 50 V = (A). Option checks: (A) correct [gpt-oss-20b]; (C) incorrect [gpt-oss-20b].",
+    "student_reply": "Thanks for spotting the error. The correct answer is (A) 50 V, because V_L and V_C are 180° apart, so phasor sum gives sqrt(1600+900)=50 V. The fix is live now."
+  },
+  {
+    "reportId": "R003",
+    "questionId": "60f744b3f1b9bc7cc7b4a949",
+    "verdict": "defect",
+    "repair": "answer_key",
+    "edit": {
+      "field": "answer",
+      "find": "C",
+      "replace": "A"
+    },
+    "route": "auto_apply",
+    "confidence": 0.97,
+    "evidence": "Key: (C) 130 V. gpt-oss-20b (blind solve): 50 V = (A). deepseek-v4-flash (blind solve): 50 V = (A). Stored solution (gpt-oss-20b) ends at 50 V = (A). Option checks: (A) correct [gpt-oss-20b]; (C) incorrect [gpt-oss-20b].",
+    "student_reply": "Thanks for checking it carefully. The correct answer is 50 V; the phasor sum gives sqrt(40^2 + (60-30)^2) = 50 V. The key step is that V_L and V_C are 180° apart, so you subtract them before adding to V_R."
+  },
+  {
+    "reportId": "R004",
+    "questionId": "68e870ef42c06737d6e565c4",
+    "verdict": "defect",
+    "repair": "answer_key",
+    "edit": {
+      "field": "answer",
+      "find": "A",
+      "replace": "D"
+    },
+    "route": "auto_apply",
+    "confidence": 0.97,
+    "evidence": "Key: (A) 4556 N/m^2. gpt-oss-20b (blind solve): 4800 N/m^2 = (D). deepseek-v4-flash (blind solve): 4800 N/m^2 = (D). Stored solution (gpt-oss-20b) ends at 4800 N/m^2 = (D). Option checks: (A) incorrect [gpt-oss-20b]; (D) correct [gpt-oss-20b].",
+    "student_reply": "Thanks, aapne sahi pakda, is question mein galti hai. Sahi answer (D) 4800 N/m^2 hai. Ab yeh theek ho gaya hai."
+  },
+  {
+    "reportId": "R005",
+    "questionId": "68dea616d0cda73d07e93ae6",
+    "verdict": "defect",
+    "repair": "answer_key",
+    "edit": {
+      "field": "answer",
+      "find": "2",
+      "replace": "1"
+    },
+    "route": "auto_apply",
+    "confidence": 0.97,
+    "evidence": "Key: 2. gpt-oss-20b (blind solve): 1. deepseek-v4-flash (blind solve): 1. Stored solution (gpt-oss-20b) ends at \"Total flux equals q/(2ε_0).\". Value checks: key value incorrect [gpt-oss-20b]; 1 correct [gpt-oss-20b].",
+    "student_reply": "Thanks for checking it carefully. The correct answer is 1, because the total flux is q/(2ε0) which matches nq/(2ε0) only when n=1."
+  },
+  {
+    "reportId": "R006",
+    "questionId": "696a866665252c04fc1f81c2",
+    "verdict": "defect",
+    "repair": "stem_data",
+    "edit": {
+      "field": "question",
+      "find": "solid copper cube,",
+      "replace": "solid copper cube of side length 10 cm,"
+    },
+    "route": "auto_apply",
+    "confidence": 0.86,
+    "evidence": "Key: 50 mm^3. gpt-oss-20b (blind solve): no value; reports missing data (side length of the copper cube), so not counted. deepseek-v4-flash (blind solve): 50000 mm^3; reports missing data (side length or volume of the cube is not…), so not counted. Stored solution (gpt-oss-20b) ends at 50 mm^3. Re-solve with \"solid copper cube of side length 10 cm,\" in the stem reproduces the key: gpt-oss-20b (re-solve): 50 mm^3; deepseek-v4-flash (re-solve): 50 mm^3. Audit (gpt-oss-20b): solution uses values the stem never gives: side length of the copper cube 10×10^−2 m.",
+    "student_reply": "Thanks for pointing that out. The question omitted the cube's edge length, so we can't compute the volume. The fix is live now."
+  },
+  {
+    "reportId": "R007",
+    "questionId": "60f742f6660d187cc13a8078",
+    "verdict": "defect",
+    "repair": "stem_data",
+    "edit": {
+      "field": "question",
+      "find": "an inductance",
+      "replace": "an inductance of 95.5×10^−3 H"
+    },
+    "route": "auto_apply",
+    "confidence": 0.86,
+    "evidence": "Key: (C) 50 ohm. Stored solution (gpt-oss-20b) ends at 50 ohm = (C). Re-solve with \"an inductance of 95.5×10^−3 H\" in the stem reproduces the key: gpt-oss-20b (re-solve): 50 ohm = (C); deepseek-v4-flash (re-solve): 50 ohm = (C). Audit (gpt-oss-20b): solution uses values the stem never gives: inductance (H) 95.5×10^−3. Audit (gpt-oss-20b): part of the solution is about another question: \"4π^2×(50)^2×(95.5×10^−3)^2\".",
+    "student_reply": "Thanks, aapne sahi pakda, is question mein galti hai. Ab yeh theek ho gaya hai."
+  },
+  {
+    "reportId": "R008",
+    "questionId": "60f742f6660d187cc13a8078",
+    "verdict": "defect",
+    "repair": "stem_data",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.86,
+    "evidence": "Key: (C) 50 ohm. gpt-oss-20b (blind solve): 40 ohm = (B); reports missing data (inductance value (assumed negligible)), so not counted. deepseek-v4-flash (blind solve): 50.8622 ohm, which matches no listed option; reports missing data (inductance L is not given), so not counted. Stored solution (gpt-oss-20b) ends at 50 ohm = (C). Audit (gpt-oss-20b): solution uses values the stem never gives: inductance (H) 95.5×10^−3. Audit (gpt-oss-20b): part of the solution is about another question: \"4π^2×(50)^2×(95.5×10^−3)^2\". Sent to faculty: no edit that passes the guards.",
+    "student_reply": "Thanks for pointing that out. The question is missing a necessary value; a teacher will review and fix it."
+  },
+  {
+    "reportId": "R009",
+    "questionId": "622f08d7b70e4b50e4500a1b",
+    "verdict": "defect",
+    "repair": "option_repair",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.95,
+    "evidence": "Code check: Check confirms a missing/blank distractor; its content is not derivable from the key or solution, so there is no source for the edit. option_missing: Only 3 option(s) stored (A, B, C); missing D. Key: (C) 10 m/s. gpt-oss-20b (blind solve): 10 m/s = (C). deepseek-v4-flash (blind solve): 10 m/s = (C). Stored solution (gpt-oss-20b) ends at 10 m/s = (C). No content proposed for the blank option. Sent to faculty: no edit that passes the guards; fewer than two independent sources agree on the missing option content (D-020).",
+    "student_reply": "Thanks for pointing that out. Option D was indeed missing from the question. A teacher will review and fix it."
+  },
+  {
+    "reportId": "R010",
+    "questionId": "622f08d7b70e4b50e4500a1b",
+    "verdict": "defect",
+    "repair": "option_repair",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.95,
+    "evidence": "Code check: Check confirms a missing/blank distractor; its content is not derivable from the key or solution, so there is no source for the edit. option_missing: Only 3 option(s) stored (A, B, C); missing D. Key: (C) 10 m/s. gpt-oss-20b (blind solve): 10 m/s = (C). deepseek-v4-flash (blind solve): 10 m/s = (C). Stored solution (gpt-oss-20b) ends at 10 m/s = (C). No content proposed for the blank option. Sent to faculty: no edit that passes the guards; fewer than two independent sources agree on the missing option content (D-020).",
+    "student_reply": "Thanks for pointing that out. I see the issue with the missing option; a teacher will review and fix it."
+  },
+  {
+    "reportId": "R011",
+    "questionId": "68e872546e45ba37dcc16bc0",
+    "verdict": "defect",
+    "repair": "option_repair",
+    "edit": {
+      "field": "question",
+      "find": "(C) <br />",
+      "replace": "(C) 1:1 <br />"
+    },
+    "route": "faculty_review",
+    "confidence": 0.42,
+    "evidence": "Key: (C) [blank]. Stored solution (gpt-oss-20b) ends at \"The forces are equal and opposite.\". Content \"1:1\" for the blank option: only 1 independent source(s) agree: deepseek-v4-flash blind solve (1). Triage (gpt-oss-120b): Option C is blank and the answer key selects C, confirming a missing option (definite option_blank). Sent to faculty: fewer than two independent sources agree on the missing option content (D-020).",
+    "student_reply": "Thanks, aapne sahi pakda, is question mein galti hai. Teacher check karke ise theek karenge."
+  },
+  {
+    "reportId": "R012",
+    "questionId": "61dffbec08489156b684bd22",
+    "verdict": "defect",
+    "repair": "spelling",
+    "edit": {
+      "field": "question",
+      "find": "Epithellial tisue",
+      "replace": "Epithelial tissue"
+    },
+    "route": "auto_apply",
+    "confidence": 0.62,
+    "evidence": "Key: (A) Epithellial tisue. gpt-oss-20b (blind solve): (A), letter only (no value given). deepseek-v4-flash (blind solve): (A), letter only (no value given). Stored solution (gpt-oss-20b) ends at (A). Triage (gpt-oss-120b): Spelling suspect signals show 'Epithellial tisue' is misspelled; correcting to 'Epithelial tissue' fixes the error.",
+    "student_reply": "Thanks for spotting the typo. The correct answer is (A) Epithelial tissue. The lining of the small intestine is mucosa, which is mainly made of epithelial cells."
+  },
+  {
+    "reportId": "R013",
+    "questionId": "617fa18efd53ff1629ed890f",
+    "verdict": "defect",
+    "repair": "exam_reference",
+    "edit": {
+      "field": "question",
+      "find": "(NEET 2019) ",
+      "replace": ""
+    },
+    "route": "auto_apply",
+    "confidence": 0.95,
+    "evidence": "Code check: Student reports an exam tag; check confirms: exam_reference: Exam/source tag in question: (NEET 2019). Key: (D) Lamina. gpt-oss-20b (blind solve): (D), letter only (no value given). deepseek-v4-flash (blind solve): (D), letter only (no value given). Stored solution (gpt-oss-20b) ends at (D). Option checks: (D) correct [gpt-oss-20b].",
+    "student_reply": "Thanks for checking carefully. The 'NEET 2019' label was mistakenly included in the question; it has been removed. The question is now correct."
+  },
+  {
+    "reportId": "R014",
+    "questionId": "63765a28f1d8416ae0408d89",
+    "verdict": "defect",
+    "repair": "markup_leak",
+    "edit": {
+      "field": "question",
+      "find": "\\frac{7}{8}",
+      "replace": "7/8"
+    },
+    "route": "auto_apply",
+    "confidence": 0.95,
+    "evidence": "Code check: Student reports raw code; check confirms: latex_in_text: Raw LaTeX visible in question: \\frac{7}{8}.",
+    "student_reply": "Thanks for pointing that out. The formatting issue has been fixed and the question now displays correctly."
+  },
+  {
+    "reportId": "R015",
+    "questionId": "6956d79788d7701e5617bc29",
+    "verdict": "defect",
+    "repair": "identical_options",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.95,
+    "evidence": "Code check: Check confirms duplicate options; a new distractor is authored content (auto: false). identical_options: Options (B) and (C) are identical: '0 W'. Key: (B) 0 W. gpt-oss-20b (blind solve): 0 W = (BC). deepseek-v4-flash (blind solve): 0 W = (BC). Stored solution (gpt-oss-20b) ends at 0 (no option). Option checks: (B) correct [gpt-oss-20b]; (C) correct [gpt-oss-20b]. Sent to faculty: repair is faculty-only (auto: false).",
+    "student_reply": "Thanks for spotting that options B and C are identical. The question needs correction; a teacher will review it."
+  },
+  {
+    "reportId": "R016",
+    "questionId": "6263d75bdd44e265ef926d97",
+    "verdict": "defect",
+    "repair": "solution_fix",
+    "edit": {
+      "field": "solution",
+      "find": "a = 40 cm",
+      "replace": "a = 20 cm"
+    },
+    "route": "auto_apply",
+    "confidence": 0.97,
+    "evidence": "Key: 20 cm. gpt-oss-20b (blind solve): 20 cm. deepseek-v4-flash (blind solve): 20 cm. Stored solution (gpt-oss-20b) ends at 40 cm. Value checks: key value correct [gpt-oss-20b]. Solution edit changes only the final value 40 -> 20, matching the key, both blind solves and the independent check.",
+    "student_reply": "Thanks for checking it carefully. The correct answer is 20 cm. The key step is subtracting the two equations to get 800 = 2s², so s = 20 cm."
+  },
+  {
+    "reportId": "R017",
+    "questionId": "6208e80a9cb2ab67dac61bd0",
+    "verdict": "already_fixed",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.42,
+    "evidence": "Code check: Student names 'mere'; history entry 'Spelling mistake' by faculty at 2026-11-07T10:42:00Z (after the report at 2026-11-04T02:08:00Z) mentions it, and 'mere' no longer appears in the live text.",
+    "student_reply": "Thanks for checking carefully. The question has been updated."
+  },
+  {
+    "reportId": "R018",
+    "questionId": "612151a6a34397610a9a2e58",
+    "verdict": "defect",
+    "repair": "solution_fix",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.86,
+    "evidence": "Key: (B) 16.8 eV. gpt-oss-20b (blind solve): 16.7023 eV = (B). deepseek-v4-flash (blind solve): 16.8 eV = (B). Stored solution (gpt-oss-20b) ends at 16.8 eV = (B). Sent to faculty: no edit that passes the guards.",
+    "student_reply": "Thanks for pointing out the mistake; the correct answer is (B) 16.8 eV, obtained by using λ=0.3 nm → K≈2.676×10⁻¹⁸ J ≈16.7 eV. A teacher will review and fix the question."
+  },
+  {
+    "reportId": "R019",
+    "questionId": "612151a6a34397610a9a2e58",
+    "verdict": "defect",
+    "repair": "solution_fix",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.97,
+    "evidence": "Key: (B) 16.8 eV. gpt-oss-20b (blind solve): 16.7023 eV = (B). deepseek-v4-flash (blind solve): 16.8 eV = (B). Stored solution (gpt-oss-20b) ends at 16.8 eV = (B). Option checks: (B) correct [gpt-oss-20b]. Sent to faculty: no edit that passes the guards.",
+    "student_reply": "Thanks, aapne sahi pakda, is question mein galti hai. Sahi answer (B) 16.8 eV hai. Teacher check karke ise theek karenge."
+  },
+  {
+    "reportId": "R020",
+    "questionId": "68c8153cfb6b2f16e2d3ceaf",
+    "verdict": "defect",
+    "repair": "answer_key",
+    "edit": {
+      "field": "answer",
+      "find": [
+        "A, B, D"
+      ],
+      "replace": [
+        "A",
+        "B",
+        "D"
+      ]
+    },
+    "route": "auto_apply",
+    "confidence": 0.95,
+    "evidence": "Code check: Stored key is malformed and its normalised form equals the student's answer: answer_malformed: Stored answer [\"A, B, D\"] is malformed (combined_string); normalised: ['A', 'B', 'D']. Key: (A) parallel to the uniform electrostatic…, (B) perpendicular to the uniform…, (D) perpendicular to the uniform magnetic…. gpt-oss-20b (blind solve): (ABD), letter only (no value given). deepseek-v4-flash (blind solve): (ABD), letter only (no value given). Stored solution (gpt-oss-20b) ends at \"Conceptual based on field force F = q(V×B) and F = qE\".",
+    "student_reply": "Thanks for checking carefully; you chose the right options (A, B, D). The key steps are: (A) constant acceleration along the field gives a straight line, (B) acceleration perpendicular to initial velocity gives a parabola, and (D) perpendicular to the magnetic field gives circular motion. The issue has been fixed and the correct answers are now accepted."
+  },
+  {
+    "reportId": "R021",
+    "questionId": "68f21caf941cda588bc04365",
+    "verdict": "defect",
+    "repair": "type_mismatch",
+    "edit": {
+      "field": "questionType",
+      "find": "mcq",
+      "replace": "scq"
+    },
+    "route": "auto_apply",
+    "confidence": 0.95,
+    "evidence": "Code check: Student says only one option is correct in a multiple-correct question; the stored key agrees (mcq_single_answer: Stored as multiple-correct but the key has one answer (B) plus an empty element: [\"\", \"B\"].). Key: (B) 1.44 min. gpt-oss-20b (blind solve): 1.4427 min = (B). deepseek-v4-flash (blind solve): 1.4427 min = (B). Stored solution (gpt-oss-20b) ends at 1.44 min = (B).",
+    "student_reply": "Thanks for spotting the issue. The correct answer is (B) 1.44 min, found by N/N0=0.125; ln(0.125)=-ln8; τ=t/(-ln(0.125)); τ=3/ln8≈1.44. The fix is live now."
+  },
+  {
+    "reportId": "R022",
+    "questionId": "61ee6c9d90a1a968a168686b",
+    "verdict": "defect",
+    "repair": "spelling",
+    "edit": {
+      "field": "question",
+      "find": "plexux",
+      "replace": "plexus"
+    },
+    "route": "auto_apply",
+    "confidence": 0.95,
+    "evidence": "Code check: Student names 'plexus'; question has 'plexux'. Check agrees: 'plexus' is absent from the text and 'plexux' (1 edit(s) away) appears in no other question.",
+    "student_reply": "Thanks for pointing that out. The spelling has been corrected and the question is now live."
+  },
+  {
+    "reportId": "R023",
+    "questionId": "68ecbacb2ec87a18deba1ad7",
+    "verdict": "defect",
+    "repair": "wrong_chapter",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.95,
+    "evidence": "Code check: Chapter claim against 'Botany / The Living World'; wrong_chapter is faculty-only (auto: false), so the route is fixed whatever an LLM says. Sent to faculty: repair is faculty-only (auto: false).",
+    "student_reply": "Thanks for pointing that out. The question is indeed filed under the wrong chapter, and a teacher will review it to correct the placement."
+  },
+  {
+    "reportId": "R024",
+    "questionId": "5fc60508028950133eac8963",
+    "verdict": "defect",
+    "repair": "answer_form",
+    "edit": {
+      "field": "question",
+      "find": "equal to",
+      "replace": "equal to (in N)"
+    },
+    "route": "auto_apply",
+    "confidence": 0.62,
+    "evidence": "Key: 20. gpt-oss-20b (blind solve): 30 N. deepseek-v4-flash (blind solve): 19.6 N. Stored solution (gpt-oss-20b) ends at 20 N. Value checks: key value correct [gpt-oss-20b], correct [deepseek-v4-flash]; 30 incorrect [gpt-oss-20b], incorrect [deepseek-v4-flash]; 19.6 correct [gpt-oss-20b], correct [deepseek-v4-flash]. Triage (gpt-oss-120b): The integer question does not state the unit of the answer (unit_not_stated signal) and the student comment notes the missing unit.",
+    "student_reply": "Thanks for pointing that out. The question has been updated to include the required unit. You can now solve it with the correct units."
+  },
+  {
+    "reportId": "R025",
+    "questionId": "622df25ab70e4b50e44ff837",
+    "verdict": "defect",
+    "repair": "diagram",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.95,
+    "evidence": "Code check: Stem refers to a figure and no image is stored; diagram repairs are faculty-only. figure_missing: Stem refers to a figure ('as shown') but the question has no image. Sent to faculty: repair is faculty-only (auto: false).",
+    "student_reply": "Thanks for pointing that out. The figure is missing or incorrect, and a teacher will review and fix it."
+  },
+  {
+    "reportId": "R026",
+    "questionId": "620e23cecc50543bc7db9186",
+    "verdict": "defect",
+    "repair": "syllabus",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.95,
+    "evidence": "Code check: Syllabus claims are faculty-only (auto: false); question stays live meanwhile. Sent to faculty: repair is faculty-only (auto: false).",
+    "student_reply": "Thanks for pointing that out. A teacher will review the question to confirm if it belongs in the syllabus. The question will remain live while we check."
+  },
+  {
+    "reportId": "R027",
+    "questionId": "6062ec84518e9535e120c422",
+    "verdict": "no_error",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.86,
+    "evidence": "Key: (A) 5.7 x 10^-5/°C. gpt-oss-20b (blind solve): 5.7e-05 1/°C = (A). deepseek-v4-flash (blind solve): 5.7e-05 /°C = (A). Stored solution (gpt-oss-20b) ends at (A). Option checks: (A) correct [gpt-oss-20b]; (C) incorrect [gpt-oss-20b].",
+    "student_reply": "Thanks for checking carefully. The correct answer is (A) 5.7 × 10⁻⁵/°C. The key step is ΔL=0.19 cm=0.0019 m, α=ΔL/(L0ΔT)=0.0019/(1×100)=1.9×10⁻⁵/°C, and β=3α=5.7×10⁻⁵/°C."
+  },
+  {
+    "reportId": "R028",
+    "questionId": "6956d7bb23cb221e570d6013",
+    "verdict": "no_error",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.86,
+    "evidence": "Key: (B) tan^−1(4). gpt-oss-20b (blind solve): 1.32582 = (B). deepseek-v4-flash (blind solve): 1.32582 = (B). Stored solution (gpt-oss-20b) ends at (B). Option checks: (B) correct [gpt-oss-20b].",
+    "student_reply": "Thanks for checking it carefully. The correct answer is tan inverse 4. The key step is setting R=H and simplifying to 4 cosθ = sinθ, giving tanθ=4."
+  },
+  {
+    "reportId": "R029",
+    "questionId": "68e8734442c06737d6e56da4",
+    "verdict": "no_error",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.86,
+    "evidence": "Key: (A) 0.8. gpt-oss-20b (blind solve): 0.8 = (A). deepseek-v4-flash (blind solve): 0.8 = (A). Stored solution (gpt-oss-20b) ends at (A). Option checks: (A) correct [gpt-oss-20b].",
+    "student_reply": "Thanks for checking it carefully. The correct value of μ is 0.8, found by equating the two expressions for F: F = 10 + 100μ and F = 50 + 50μ. So μ = 0.8."
+  },
+  {
+    "reportId": "R030",
+    "questionId": "6956d7e988d7701e5617bd3e",
+    "verdict": "no_error",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.86,
+    "evidence": "Key: (D) 8√(2 m). gpt-oss-20b (blind solve): 11.3137 m = (D). deepseek-v4-flash (blind solve): 11.3137 m = (D). Stored solution (gpt-oss-20b) ends at (D). Option checks: (D) correct [gpt-oss-20b].",
+    "student_reply": "Thanks for checking carefully. The correct amplitude is 8√2 m. The key step is using v(2)=Aωcos(π/4)=π, which gives A=8√2."
+  },
+  {
+    "reportId": "R031",
+    "questionId": "68dea619d0cda73d07e93aee",
+    "verdict": "no_error",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.86,
+    "evidence": "Key: 4 seconds. gpt-oss-20b (blind solve): 4 seconds. deepseek-v4-flash (blind solve): 4 s. Stored solution (gpt-oss-20b) ends at 4 sec. Value checks: key value correct [gpt-oss-20b].",
+    "student_reply": "Humne ise alag se dobara solve kiya: sahi answer 4 seconds hai, aur question theek hai."
+  },
+  {
+    "reportId": "R032",
+    "questionId": "68dea7c2387eea3d0d95f9bb",
+    "verdict": "defect",
+    "repair": "solution_fix",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.2,
+    "evidence": "Key: 8 cm. gpt-oss-20b (blind solve): 18 cm. deepseek-v4-flash (blind solve): 8 cm. Stored solution (gpt-oss-20b) ends at 0.08 m. Triage (gpt-oss-120b): The stored solution ends with \"0.08 m\" while the answer key is 8 (cm) and the question asks for shift in cm, indicating a unit mismatch. Sent to faculty: evidence does not meet the auto-apply bar; no edit that passes the guards: edit would replace MathML with plain text; edit drops or changes markup; solution_fix auto-applies only as a final-value correction that every signal backs; triage contradicts the signals.",
+    "student_reply": "Aapne sahi pakda, question mein mistake thi. Teacher ise review karega aur fix karega."
+  },
+  {
+    "reportId": "R033",
+    "questionId": "68dea715387eea3d0d95f790",
+    "verdict": "no_error",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.86,
+    "evidence": "Key: 3113 m^2. gpt-oss-20b (blind solve): 3113 m^2. deepseek-v4-flash (blind solve): 3113 m^2. Stored solution (gpt-oss-20b) ends at 311.3 m^2. Value checks: key value correct [gpt-oss-20b].",
+    "student_reply": "Thanks for double‑checking the calculation. The correct answer is 3113 m², obtained by rounding the surface area 311.299254 m² to 311.3 m² and then multiplying by 10. Your answer of 3112.99 is close but not the rounded value used in the key."
+  },
+  {
+    "reportId": "R034",
+    "questionId": "695ee00b88d7701e561aabc5",
+    "verdict": "defect",
+    "repair": "unsound",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.97,
+    "evidence": "Key: (D) A is false, but R is true. gpt-oss-20b (blind solve): no option and no value. deepseek-v4-flash (blind solve): (D), letter only (no value given). Stored solution (gpt-oss-20b) ends at (D). Option checks: (D) incorrect [gpt-oss-20b], incorrect [deepseek-v4-flash]; (A) incorrect [gpt-oss-20b]; (B) incorrect [gpt-oss-20b]; (C) incorrect [gpt-oss-20b]. Audit (gpt-oss-20b): solution contradicts itself: \"Assertion (A) is false because when two waves of equal amplitude interfere with a phase difference of π/2…\". Sent to faculty: repair is faculty-only (auto: false).",
+    "student_reply": "Thank you for pointing out the issue. The question as written has no correct option, and a teacher will review it to correct the problem."
+  },
+  {
+    "reportId": "R035",
+    "questionId": "66fe9dbe22132e5a70a3e579",
+    "verdict": "no_error",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.86,
+    "evidence": "Key: (D) Relaxin - Inhibin. gpt-oss-20b (blind solve): (D), letter only (no value given). deepseek-v4-flash (blind solve): (D), letter only (no value given). Stored solution (gpt-oss-20b) ends at \"Inhibin inhibits FSH secretion, while relaxin softens pelvic ligaments during…\". Option checks: (D) correct [gpt-oss-20b].",
+    "student_reply": "Thanks for checking carefully. The correct answer is (D) Relaxin – Inhibin, because they are not antagonistic; they are unrelated hormones."
+  },
+  {
+    "reportId": "R036",
+    "questionId": "60ca4feb6420652745f55522",
+    "verdict": "display_issue",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.95,
+    "evidence": "Code check: Display/loading complaint; stored content is complete (4 non-blank options, no markup leak, no missing figure).",
+    "student_reply": "Thanks for letting us know. The issue with the options being cut off has been reported to the app team. Please try refreshing or using a different device."
+  },
+  {
+    "reportId": "R037",
+    "questionId": "68c9ae5afb6b2f16e2d43b1c",
+    "verdict": "display_issue",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.95,
+    "evidence": "Code check: Display/loading complaint; stored content is complete (4 non-blank options, no markup leak, no missing figure).",
+    "student_reply": "Thanks for letting us know. We're aware of the loading issue and have forwarded it to the app team. Please try again later."
+  },
+  {
+    "reportId": "R038",
+    "questionId": "68f21df0941cda588bc0470b",
+    "verdict": "app_issue",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.95,
+    "evidence": "Code check: Comment describes platform behaviour (recorded option / app), not the question content.",
+    "student_reply": "Thanks for pointing that out. It seems there's a glitch in the app that saved the wrong option. We'll forward this to the technical team for a fix."
+  },
+  {
+    "reportId": "R039",
+    "questionId": "68c801bc1b1dbc16dc93bf2b",
+    "verdict": "language_mode",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.95,
+    "evidence": "Code check: Student asks for another language; the stored question is English-only.",
+    "student_reply": "Sure, main madad kar sakta hoon. Unfortunately, question sirf English mein hi available hai abhi. Hum ise English mein hi rakhenge."
+  },
+  {
+    "reportId": "R040",
+    "questionId": "6264197209f4fd65f58f5707",
+    "verdict": "defect",
+    "repair": "spelling",
+    "edit": {
+      "field": "solution",
+      "find": "riceis",
+      "replace": "rice is"
+    },
+    "route": "auto_apply",
+    "confidence": 0.86,
+    "evidence": "Key: (C) Golden rice. gpt-oss-20b (blind solve): (C), letter only (no value given). deepseek-v4-flash (blind solve): (C), letter only (no value given). Stored solution (gpt-oss-20b) ends at (C). Triage (gpt-oss-120b): The solution contains the run‑together word 'riceis' which is a spelling error.",
+    "student_reply": "Thanks for pointing out the typo. The correct answer is (C) Golden rice, because vitamin A deficiency causes night blindness, foods rich in provitamin A can prevent it, and Golden rice is engineered to contain beta‑carotene. The fix is live now."
+  },
+  {
+    "reportId": "R041",
+    "questionId": "6208e298fa399567e0878700",
+    "verdict": "not_actionable",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.95,
+    "evidence": "Code check: Comment is unintelligible and no check found anything on the question. Key: (A) Julius von Sachs. gpt-oss-20b (blind solve): (A), letter only (no value given). deepseek-v4-flash (blind solve): (A), letter only (no value given). Stored solution (gpt-oss-20b) ends at (A).",
+    "student_reply": "Thanks for checking; the question is correct as is."
+  },
+  {
+    "reportId": "R042",
+    "questionId": "63c7cce12981ed154ee92c94",
+    "verdict": "defect",
+    "repair": "wrong_chapter",
+    "edit": null,
+    "route": "faculty_review",
+    "confidence": 0.95,
+    "evidence": "Code check: Chapter claim against 'Physics / Geometrical optics and optical instruments'; wrong_chapter is faculty-only (auto: false), so the route is fixed whatever an LLM says. Sent to faculty: repair is faculty-only (auto: false).",
+    "student_reply": "Thanks for pointing that out. The question is indeed filed under the wrong chapter, and a teacher will review it soon."
+  },
+  {
+    "reportId": "R043",
+    "questionId": "636283dbe3770c24f866e6d6",
+    "verdict": "no_error",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.86,
+    "evidence": "Key: (B) 4:1. gpt-oss-20b (blind solve): 4 = (B). deepseek-v4-flash (blind solve): 4 = (B). Stored solution (gpt-oss-20b) ends at (B). Option checks: (B) correct [gpt-oss-20b].",
+    "student_reply": "Thanks for checking it carefully. The surface density ratio comes out to 4, so the correct ratio is 4:1."
+  },
+  {
+    "reportId": "R044",
+    "questionId": "68dea577d0cda73d07e9391c",
+    "verdict": "no_error",
+    "repair": null,
+    "edit": null,
+    "route": "no_change",
+    "confidence": 0.86,
+    "evidence": "Key: 14 volt. gpt-oss-20b (blind solve): 14 V. deepseek-v4-flash (blind solve): 14 V. Stored solution (gpt-oss-20b) ends at 14 V. Value checks: key value correct [gpt-oss-20b].",
+    "student_reply": "Thanks for checking carefully. The correct answer is 14 V. The key step is that ΔV = V_P – V_S = 22 V – 8 V = 14 V."
+  }
+]

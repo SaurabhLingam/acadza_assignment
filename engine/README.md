@@ -27,7 +27,7 @@ python -m eval.compare_runs logs/runs/<main> logs/runs/<swap>   # accuracy, rout
 | `decide.py` | Code decides verdict / repair / route / confidence from the signals (D-016); shadow-mode per-tier decisions. |
 | `edits.py` | Code-built edits, clean-text → raw mapping for LLM edits (D-019), D-004 guards. |
 | `run.py` | `python -m engine.run [--reports a,b] [--cap 0.5] [--offline] [--swap-model M]`: full pipeline, `results.json`, run summary. `--swap-model` puts M in solver #1 and the checks (audit, option and value checks) and writes only under `logs/runs/`. |
-| `bonus.py` | Definite findings and signals no report's claim covers and no `results.json` edit fixes → `bonus_findings.json`, with a code-built edit where possible and whether it could auto-apply under D-023. |
+| `bonus.py` | Question-level findings no report's outcome covers → `bonus_findings.json`: code findings (spelling/noise/markup_leak count as covered only if a `results.json` edit fixed that span) merged with the human review in `docs/bonus-review.json` (`add`: missed findings, each verified against the stored HTML; `dismiss`: false positives). Each row: evidence, a guarded edit where possible, and whether it could auto-apply under D-023. |
 
 Rules are generic: no question or report IDs (D-010, enforced by `tests/test_project_rules.py`).
 

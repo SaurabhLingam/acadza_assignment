@@ -449,3 +449,44 @@ Then the weak-model robustness test (decision e): rerun all 44 with gpt-oss-20b 
 </pasted_content id="8dee">
 
 ```
+
+---
+
+### 2026-11-11T07:14:24+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+
+
+<pasted_content id="8dee">
+Cross-check bonus_findings.json against this list from my manual review. For each one, look at the raw HTML in data/questions.json first and confirm it's a real defect in the stored content, not an artifact of our parser. Add the real ones if they're missing; tell me which you dropped and why.
+
+- 68f21caf: radioactivity question filed under chapter "Mathematics in physics" (wrong_chapter)
+- 66fe9dbe: solution says insulin and glucagon "work synergistically" (they're antagonistic); option C is missing its dash
+- 6956d7e9: options write the unit inside the root, √(2 m)
+- 61ee6c9d: "prominant" and "Maceus" in the solution
+- 68dea657: garbled subscripts P_eqcu / P_eqch in the solution
+- 6062ec84: solution units showing as "/AC", "/CC"
+- 6264197: "producebeta-carotene" in the solution (mark as a manual finding)
+
+Also remove the inhibit/inhibin and abaxial/adaxial false positives.
+</pasted_content id="8dee">
+
+```
+
+---
+
+### 2026-11-11T07:18:28+05:30
+
+session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
+
+```text
+<task-notification>
+<task-id>b6q12fn8v</task-id>
+<tool-use-id>toolu_01L3gtBv25zky6oueqzu6YsX</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\77f3d0e8-4bb1-44c9-8f08-2d117cd48778\tasks\b6q12fn8v.output</output-file>
+<status>completed</status>
+<summary>Background command "Run all 44 reports with gpt-oss-20b swapped in" completed (exit code 0)</summary>
+</task-notification>
+```
