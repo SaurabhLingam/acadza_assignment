@@ -45,3 +45,9 @@ Times the AI (coding assistant or in-product LLM) got something wrong. Add entri
 - **What the AI did wrong:** the injection regex was written against R027's wording and missed all three new phrasings in the held-out set (H07-H09); H08 auto-applied from an injection report.
 - **How I caught it:** Caught by a held-out set I built, not by the 44.
 - **What I changed:** D-030. A detector built on what the comment does (five families, English and Hinglish), and any guard score >= 0.5 now blocks auto-apply.
+
+## M-007: The first reply answer check ignored the value inside the option text
+- **Date:** 2026-11-11
+- **What the AI did wrong:** the first version of the reply answer check ignored the value inside the option text and rejected correct replies like "the correct answer is 50 V" (key "(A) 50 V").
+- **How I caught it:** caught by the replay diff before the final run.
+- **What I changed:** `check_reply_claims` (`engine/tiers.py`) accepts the values in the keyed option's text as the decision's answer; test in `tests/test_reply_checks.py` ("50 V" passes and "70 V" fails against "(A) 50 V"). The buggy replays (`logs/runs/20261111T112608Z`, `20261111T112610Z`) are kept as evidence.
