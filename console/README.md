@@ -41,8 +41,8 @@ calm blue. Red and green appear only in diffs (including the OLD KEY / NEW tags,
 struck through) and ✓/✗ marks. Headlines are kept to about 110 characters and use non-breaking spaces inside
 values ("a = 20 cm", "C (130 V)"), so a line never breaks mid-value.
 
-A six-step guided tour (`src/components/Tour.tsx`, no library) opens on the first visit, on the first case of
-"Needs you": queue, headline, how sure, what changes, action bar, audit log. It is remembered in localStorage
+A seven-step guided tour (`src/components/Tour.tsx`, no library) opens on the first visit, on the first case of
+"Needs you": queue, list tabs, headline, how sure, what changes, action bar, audit log. It is remembered in localStorage
 (`rr.tourSeen`), skippable (Esc), keyboard-driven (→ / Enter next, ← back, focus kept in the popover) and can be
 reopened from the **Tour** button or the `?` screen. A first visit through a deep link skips it, so a shared
 link opens straight on its case.

@@ -3,8 +3,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 /** A lightweight guided tour: a spotlight over one [data-tour] target, a dimmed backdrop, and a small
  *  popover. Keyboard: → / Enter next, ← back, Esc skip. Focus stays inside the popover. */
 
-export const TOUR_STEPS: { target: string; title: string; text: string }[] = [
+export const TOUR_STEPS: { target: string; title: string; text: string; wide?: boolean }[] = [
   { target: "queue", title: "Queue", text: "Cases that need you, most harmful first. Grouped by question." },
+  { target: "tabs", title: "Lists", wide: true, text: "Done: cases you've acted on.\nOther: fixes the AI already applied (review or undo them), cases with no change (spot-check), and bonus findings no student reported." },
   { target: "headline", title: "Headline", text: "What's wrong, in one sentence." },
   { target: "sure", title: "How sure", text: "How much independent evidence agrees. Open “Show evidence” for the grid." },
   { target: "changes", title: "What changes", text: "Before and after. Nothing goes live without your action here." },
@@ -15,6 +16,7 @@ export const TOUR_STEPS: { target: string; title: string; text: string }[] = [
 const PAD = 6;
 const GAP = 12;
 const W = 320;
+const W_WIDE = 400;
 
 export function Tour({ onClose }: { onClose: () => void }) {
   const [i, setI] = useState(0);
@@ -48,7 +50,7 @@ export function Tour({ onClose }: { onClose: () => void }) {
   useLayoutEffect(() => {
     const h = pop.current?.offsetHeight ?? 120;
     const vw = window.innerWidth, vh = window.innerHeight;
-    const width = Math.min(W, vw - 32);
+    const width = Math.min(step.wide ? W_WIDE : W, vw - 32);
     if (!rect) { setPos({ top: vh / 2 - h / 2, left: vw / 2 - width / 2 }); return; }
     const nextEl = TOUR_STEPS[i + 1] && document.querySelector<HTMLElement>(`[data-tour="${TOUR_STEPS[i + 1].target}"]`);
     const avoid = [rect, nextEl?.getBoundingClientRect()].filter((r): r is DOMRect => !!r && r.width > 0);
@@ -91,7 +93,7 @@ export function Tour({ onClose }: { onClose: () => void }) {
           top: rect.top - PAD, left: rect.left - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2,
         }} />
       ) : <div className="tour-dim" aria-hidden />}
-      <div ref={pop} className="tour-pop" style={{ top: pos.top, left: pos.left, width: Math.min(W, window.innerWidth - 32) }}>
+      <div ref={pop} className="tour-pop" style={{ top: pos.top, left: pos.left, width: Math.min(step.wide ? W_WIDE : W, window.innerWidth - 32) }}>
         <p className="tour-count">{i + 1} of {TOUR_STEPS.length}</p>
         <h2 id="tour-title">{step.title}</h2>
         <p id="tour-text">{step.text}</p>

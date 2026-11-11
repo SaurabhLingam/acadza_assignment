@@ -105,19 +105,37 @@ button, input, textarea { font: inherit; color: inherit; }
 
 /* ------------------------------------------------------------------ queue */
 .queue { grid-area: queue; display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--surface); }
-.qtabs { display: flex; gap: 2px; padding: 8px 8px 6px; border-bottom: 1px solid var(--line); }
-.qtab { background: none; border: 0; padding: 5px 9px; border-radius: 6px; color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; }
-.qtab:hover { color: var(--text); }
-.qtab.on { color: var(--text); background: var(--raise); }
-.qtab .n, .menu .n { color: var(--faint); font-size: 12px; margin-left: 3px; font-variant-numeric: tabular-nums; }
-.other { position: relative; margin-left: auto; }
-.menu {
-  position: absolute; right: 0; top: 34px; z-index: 5; min-width: 190px; padding: 4px; background: var(--raise);
-  border: 1px solid var(--line-2); border-radius: 8px; box-shadow: var(--shadow);
+.qtabs { display: flex; gap: 4px; padding: 6px 8px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.qtab {
+  flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; background: none; border: 0;
+  border-bottom: 2px solid transparent; border-radius: 0; margin-bottom: -1px; padding: 7px 8px 8px;
+  color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap;
 }
-.menu button { display: flex; justify-content: space-between; width: 100%; background: none; border: 0; padding: 7px 10px; border-radius: 5px; cursor: pointer; text-align: left; }
-.menu button:hover, .menu button.on { background: var(--select); }
+.qtab:hover { color: var(--text); }
+.qtab.on { color: var(--text); border-bottom-color: var(--text); }
+.qtab:focus-visible { outline-offset: -2px; }
+.qtab .n, .menu .n { color: var(--faint); font-size: 12px; margin-left: 3px; font-variant-numeric: tabular-nums; }
+.qtab .caret { font-size: 10px; margin-left: 2px; }
+.other { position: relative; margin-left: auto; min-width: 0; display: flex; }
+.qhead { margin: 0; padding: 8px 18px 2px; color: var(--muted); font-size: 12px; }
+.menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 5; width: 200px; max-width: calc(100vw - 32px); padding: 4px;
+  background: var(--raise); border: 1px solid var(--line-2); border-radius: 8px; box-shadow: var(--shadow);
+}
+.menu button { display: flex; align-items: center; gap: 6px; width: 100%; background: none; border: 0; padding: 7px 10px; border-radius: 5px; cursor: pointer; text-align: left; }
+.menu button:hover, .menu button:focus-visible { background: var(--select); }
+.menu button:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--link); }
+.menu .mark { width: 12px; color: var(--text); font-size: 12px; }
+.menu .menu-label { flex: 1; }
+.menu button.on .menu-label { font-weight: 600; }
 .rows { list-style: none; margin: 0; padding: 4px; overflow-y: auto; flex: 1; }
+/* thin themed scrollbar, no arrow buttons: WebKit/Blink pseudo-elements; Firefox gets the standard properties */
+.rows::-webkit-scrollbar { width: 8px; }
+.rows::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.rows::-webkit-scrollbar-track { background: transparent; }
+.rows::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 8px; border: 2px solid var(--surface); }
+.rows::-webkit-scrollbar-thumb:hover { background: var(--faint); }
+@supports (-moz-appearance: none) { .rows { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; } }
 .row {
   display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left; background: none; border: 0;
   padding: 8px 10px; border-radius: 7px; cursor: pointer;
@@ -313,7 +331,7 @@ button, input, textarea { font: inherit; color: inherit; }
 }
 .tour-count { margin: 0; font-size: 11.5px; color: var(--muted); }
 .tour-pop h2 { margin: 2px 0 4px; font-size: 15px; }
-.tour-pop p#tour-text { margin: 0; color: var(--text-2); }
+.tour-pop p#tour-text { margin: 0; color: var(--text-2); white-space: pre-line; }
 .tour-actions { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
 .tour-actions .link { margin-right: auto; color: var(--muted); }
 .tour-dots { display: flex; gap: 4px; margin-right: 6px; }
