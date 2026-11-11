@@ -16,6 +16,7 @@ import html
 import json
 import re
 import time
+from pathlib import Path
 from datetime import datetime, timezone
 
 from . import config
@@ -785,6 +786,10 @@ def main(argv=None):
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--swap-model", default="", metavar="MODEL",
                     help="robustness test (D-005): MODEL for " + ", ".join(SWAP_ROLES) + "; writes only to logs/runs/")
+    ap.add_argument("--questions", default="", help="questions file (default: data/questions.json)")
+    ap.add_argument("--reports-file", default="", help="reports file (default: data/reports.json)")
+    ap.add_argument("--out", default="", help="results file to write instead of the root results.json; "
+                    "logs/run-summary.json is then left alone (the summary stays under logs/runs/<run_id>/)")
     a = ap.parse_args(argv)
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -799,8 +804,8 @@ def main(argv=None):
         run_id += "-swap-" + a.swap_model.split("/")[-1]
     t_start = time.perf_counter()
     taxonomy = load_taxonomy()
-    questions = load_questions()
-    reports = sorted(load_reports(), key=lambda r: r.report_id)
+    questions = load_questions(a.questions or None)
+    reports = sorted(load_reports(a.reports_file or None), key=lambda r: r.report_id)
     wanted = [x.strip() for x in a.reports.split(",") if x.strip()]
     if wanted:
         reports = [r for r in reports if r.report_id in set(wanted)]
@@ -831,7 +836,9 @@ def main(argv=None):
     with open(run_dir / "details.jsonl", "w", encoding="utf-8") as fh:
         for d in details:
             fh.write(json.dumps(d, ensure_ascii=False, default=str) + "\n")
-    if full_run and not stopped and not swapped:
+    if a.out:
+        Path(a.out).write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
+    elif full_run and not stopped and not swapped:
         (ROOT / "results.json").write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
 
     shadow_dis = [{"reportId": d["reportId"], "tier": s["tier"], "name": s["name"],
@@ -856,7 +863,7 @@ def main(argv=None):
         "results_file": str((run_dir / "results.json").relative_to(ROOT)),
     }
     (run_dir / "run-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    if not swapped:
+    if not swapped and not a.out:
         (ROOT / "logs" / "run-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(json.dumps({k: summary[k] for k in ("reports_done", "stopped", "spend_usd", "routed_to_faculty",
                                               "auto_applied", "injection_flags")}, indent=1))

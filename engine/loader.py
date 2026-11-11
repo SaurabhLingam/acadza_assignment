@@ -48,14 +48,14 @@ class Report:
     comment: str
 
 
-def _read_json(name: str):
-    with open(DATA_DIR / name, "r", encoding="utf-8") as fh:
+def _read_json(name: str, path: str | Path | None = None):
+    with open(Path(path) if path else DATA_DIR / name, "r", encoding="utf-8") as fh:
         return json.load(fh)
 
 
-def load_questions() -> dict[str, Question]:
+def load_questions(path: str | Path | None = None) -> dict[str, Question]:
     out: dict[str, Question] = {}
-    for q in _read_json("questions.json"):
+    for q in _read_json("questions.json", path):
         qtype = q["questionType"]
         body = q.get(qtype) or {}
         history = tuple(
@@ -84,7 +84,7 @@ def load_questions() -> dict[str, Question]:
     return out
 
 
-def load_reports() -> list[Report]:
+def load_reports(path: str | Path | None = None) -> list[Report]:
     return [
         Report(
             report_id=r["reportId"],
@@ -94,7 +94,7 @@ def load_reports() -> list[Report]:
             reported_at=r.get("reportedAt", ""),
             comment=r.get("comment") or "",
         )
-        for r in _read_json("reports.json")
+        for r in _read_json("reports.json", path)
     ]
 
 

@@ -938,3 +938,42 @@ session: `77f3d0e8-4bb1-44c9-8f08-2d117cd48778`
 <summary>Background command "Serve the built console for the UI check" failed with exit code 1</summary>
 </task-notification>
 ```
+
+---
+
+### 2026-11-11T14:00:37+05:30
+
+session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
+
+```text
+
+
+<pasted_content id="0f56">
+I built a held-out test set to check the engine generalises beyond the 44. It's in eval/heldout/: heldout_reports.json (32 reports) and heldout_questions.json (10 new question records). Some reports point at existing questions in data/questions.json, the rest at the new records.
+
+Run the frozen engine on it, exactly as it ran for the final 44 run. Rules:
+- No changes to engine logic, prompts, thresholds or guards. If the runner can't take a different input path, add only an input/output path option, nothing else, and tell me what you changed.
+- Don't modify anything in data/ or the existing results.json. Build a merged questions file inside eval/heldout/ (data/questions.json + heldout_questions.json) and point the run at it.
+- Write the output to eval/heldout/results_heldout.json and keep the logs under logs/ like every other run.
+- Don't try to predict or check correctness: don't read docs/eval-labels.csv for these, and don't inspect the new questions to work out expected answers. I have the key and will score it separately.
+
+When done, show me: run id, cost, time, route counts, and a table with one row per report: reportId, verdict, repair, answer (after any edit), route, confidence, and whether injection was flagged. Commit eval/heldout/ and push.
+</pasted_content id="0f56">
+
+```
+
+---
+
+### 2026-11-11T14:17:40+05:30
+
+session: `b429cb97-1796-4ab1-b494-1c347c70bfb3`
+
+```text
+<task-notification>
+<task-id>bsia89hlt</task-id>
+<tool-use-id>toolu_01UC3mWyY1RUKKTF6RxNhmzE</tool-use-id>
+<output-file>C:\Users\saura\AppData\Local\Temp\claude\ebefd33da09cf696\b429cb97-1796-4ab1-b494-1c347c70bfb3\tasks\bsia89hlt.output</output-file>
+<status>completed</status>
+<summary>Background command "Run frozen engine on held-out set" completed (exit code 0)</summary>
+</task-notification>
+```
